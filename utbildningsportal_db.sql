@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `2025_login`
+-- Database: `utbildningsportal`
 --
 
 -- --------------------------------------------------------
@@ -31,7 +31,7 @@ CREATE TABLE `roles` (
   `r_id` int NOT NULL,
   `r_name` varchar(255) NOT NULL,
   `r_level` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -51,7 +51,91 @@ CREATE TABLE `users` (
   `u_isactive` tinyint(1) NOT NULL,
   `u_role_fk` int NOT NULL,
   `u_class_fk` int DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `classes`
+--
+CREATE TABLE `classes` (
+  `c_id` int NOT NULL,
+  `c_name` varchar(255) NOT NULL,
+  `c_progress_speed_fk` int DEFAULT NULL,
+  `c_teacher_fk` int DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `progress_speeds`
+--
+CREATE TABLE `progress_speeds` (
+  `ps_id` int NOT NULL,
+  `ps_name` varchar(255) NOT NULL,
+  `ps_level` int NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `tasks`
+--
+CREATE TABLE `tasks` (
+  `t_id` int NOT NULL,
+  `t_name` varchar(255) NOT NULL,
+  `t_type_fk` int NOT NULL,
+  `t_teacher_fk` int DEFAULT NULL,
+  `t_text` text,
+  `t_questions` text COMMENT 'Kan vara JSON-data med frågor och svar',
+  `t_level_fk` int NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `task_levels`
+--
+CREATE TABLE `task_levels` (
+  `tl_id` int NOT NULL,
+  `tl_name` varchar(255) NOT NULL,
+  `tl_level` int NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `task_types`
+--
+CREATE TABLE `task_types` (
+  `tt_id` int NOT NULL,
+  `tt_name` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `student_tasks`
+--
+CREATE TABLE `student_tasks` (
+  `st_id` int NOT NULL,
+  `st_s_id_fk` int NOT NULL COMMENT 'Student ID (user)',
+  `st_t_id_fk` int NOT NULL COMMENT 'Task ID',
+  `st_completed` tinyint(1) NOT NULL DEFAULT '0',
+  `st_score` int DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `student_achivements`
+--
+CREATE TABLE `student_achivements` (
+  `sa_id` int NOT NULL,
+  `sa_s_id_fk` int NOT NULL COMMENT 'Student ID (user)',
+  `sa_name` varchar(255) NOT NULL,
+  `sa_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Indexes for dumped tables
@@ -72,6 +156,56 @@ ALTER TABLE `users`
   ADD KEY `u_class_fk` (`u_class_fk`);
 
 --
+-- Indexes for table `classes`
+--
+ALTER TABLE `classes`
+  ADD PRIMARY KEY (`c_id`),
+  ADD KEY `c_progress_speed_fk` (`c_progress_speed_fk`),
+  ADD KEY `c_teacher_fk` (`c_teacher_fk`);
+
+--
+-- Indexes for table `progress_speeds`
+--
+ALTER TABLE `progress_speeds`
+  ADD PRIMARY KEY (`ps_id`);
+
+--
+-- Indexes for table `tasks`
+--
+ALTER TABLE `tasks`
+  ADD PRIMARY KEY (`t_id`),
+  ADD KEY `t_type_fk` (`t_type_fk`),
+  ADD KEY `t_teacher_fk` (`t_teacher_fk`),
+  ADD KEY `t_level_fk` (`t_level_fk`);
+
+--
+-- Indexes for table `task_levels`
+--
+ALTER TABLE `task_levels`
+  ADD PRIMARY KEY (`tl_id`);
+
+--
+-- Indexes for table `task_types`
+--
+ALTER TABLE `task_types`
+  ADD PRIMARY KEY (`tt_id`);
+
+--
+-- Indexes for table `student_tasks`
+--
+ALTER TABLE `student_tasks`
+  ADD PRIMARY KEY (`st_id`),
+  ADD KEY `st_s_id_fk` (`st_s_id_fk`),
+  ADD KEY `st_t_id_fk` (`st_t_id_fk`);
+
+--
+-- Indexes for table `student_achivements`
+--
+ALTER TABLE `student_achivements`
+  ADD PRIMARY KEY (`sa_id`),
+  ADD KEY `sa_s_id_fk` (`sa_s_id_fk`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -88,43 +222,10 @@ ALTER TABLE `users`
   MODIFY `u_id` int NOT NULL AUTO_INCREMENT;
 
 --
--- Table structure for table `classes`
---
-CREATE TABLE `classes` (
-  `c_id` int NOT NULL,
-  `c_name` varchar(255) NOT NULL,
-  `c_progress_speed_fk` int DEFAULT NULL,
-  `c_teacher_fk` int DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
---
--- Indexes for table `classes`
---
-ALTER TABLE `classes`
-  ADD PRIMARY KEY (`c_id`),
-  ADD KEY `c_progress_speed_fk` (`c_progress_speed_fk`),
-  ADD KEY `c_teacher_fk` (`c_teacher_fk`);
-
---
 -- AUTO_INCREMENT for table `classes`
 --
 ALTER TABLE `classes`
   MODIFY `c_id` int NOT NULL AUTO_INCREMENT;
-
---
--- Table structure for table `progress_speeds`
---
-CREATE TABLE `progress_speeds` (
-  `ps_id` int NOT NULL,
-  `ps_name` varchar(255) NOT NULL,
-  `ps_level` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
---
--- Indexes for table `progress_speeds`
---
-ALTER TABLE `progress_speeds`
-  ADD PRIMARY KEY (`ps_id`);
 
 --
 -- AUTO_INCREMENT for table `progress_speeds`
@@ -133,47 +234,10 @@ ALTER TABLE `progress_speeds`
   MODIFY `ps_id` int NOT NULL AUTO_INCREMENT;
 
 --
--- Table structure for table `tasks`
---
-CREATE TABLE `tasks` (
-  `t_id` int NOT NULL,
-  `t_name` varchar(255) NOT NULL,
-  `t_type_fk` int NOT NULL,
-  `t_teacher_fk` int DEFAULT NULL,
-  `t_text` text,
-  `t_questions` text COMMENT 'Kan vara JSON-data med frågor och svar',
-  `t_level_fk` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
---
--- Indexes for table `tasks`
---
-ALTER TABLE `tasks`
-  ADD PRIMARY KEY (`t_id`),
-  ADD KEY `t_type_fk` (`t_type_fk`),
-  ADD KEY `t_teacher_fk` (`t_teacher_fk`),
-  ADD KEY `t_level_fk` (`t_level_fk`);
-
---
 -- AUTO_INCREMENT for table `tasks`
 --
 ALTER TABLE `tasks`
   MODIFY `t_id` int NOT NULL AUTO_INCREMENT;
-
---
--- Table structure for table `task_levels`
---
-CREATE TABLE `task_levels` (
-  `tl_id` int NOT NULL,
-  `tl_name` varchar(255) NOT NULL,
-  `tl_level` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
---
--- Indexes for table `task_levels`
---
-ALTER TABLE `task_levels`
-  ADD PRIMARY KEY (`tl_id`);
 
 --
 -- AUTO_INCREMENT for table `task_levels`
@@ -181,44 +245,12 @@ ALTER TABLE `task_levels`
 ALTER TABLE `task_levels`
   MODIFY `tl_id` int NOT NULL AUTO_INCREMENT;
 
---
--- Table structure for table `task_types`
---
-CREATE TABLE `task_types` (
-  `tt_id` int NOT NULL,
-  `tt_name` varchar(255) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
---
--- Indexes for table `task_types`
---
-ALTER TABLE `task_types`
-  ADD PRIMARY KEY (`tt_id`);
-
+WELCOME
 --
 -- AUTO_INCREMENT for table `task_types`
 --
 ALTER TABLE `task_types`
   MODIFY `tt_id` int NOT NULL AUTO_INCREMENT;
-
---
--- Table structure for table `student_tasks`
---
-CREATE TABLE `student_tasks` (
-  `st_id` int NOT NULL,
-  `st_s_id_fk` int NOT NULL COMMENT 'Student ID (user)',
-  `st_t_id_fk` int NOT NULL COMMENT 'Task ID',
-  `st_completed` tinyint(1) NOT NULL DEFAULT '0',
-  `st_score` int DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
---
--- Indexes for table `student_tasks`
---
-ALTER TABLE `student_tasks`
-  ADD PRIMARY KEY (`st_id`),
-  ADD KEY `st_s_id_fk` (`st_s_id_fk`),
-  ADD KEY `st_t_id_fk` (`st_t_id_fk`);
 
 --
 -- AUTO_INCREMENT for table `student_tasks`
@@ -227,29 +259,10 @@ ALTER TABLE `student_tasks`
   MODIFY `st_id` int NOT NULL AUTO_INCREMENT;
 
 --
--- Table structure for table `student_achivements`
---
-CREATE TABLE `student_achivements` (
-  `sa_id` int NOT NULL,
-  `sa_s_id_fk` int NOT NULL COMMENT 'Student ID (user)',
-  `sa_name` varchar(255) NOT NULL,
-  `sa_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
---
--- Indexes for table `student_achivements`
---
-ALTER TABLE `student_achivements`
-  ADD PRIMARY KEY (`sa_id`),
-  ADD KEY `sa_s_id_fk` (`sa_s_id_fk`);
-
---
 -- AUTO_INCREMENT for table `student_achivements`
 --
 ALTER TABLE `student_achivements`
   MODIFY `sa_id` int NOT NULL AUTO_INCREMENT;
-
-
 
 --
 -- Constraints for dumped tables

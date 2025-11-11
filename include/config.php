@@ -2,7 +2,7 @@
 session_start(); 
 
 $host = '127.0.0.1';
-$db   = '2025_login';
+$db   = 'utbildningsportal';
 $user = 'root';
 $pass = '';
 $charset = 'utf8mb4';
