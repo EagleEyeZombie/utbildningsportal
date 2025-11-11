@@ -245,7 +245,6 @@ ALTER TABLE `tasks`
 ALTER TABLE `task_levels`
   MODIFY `tl_id` int NOT NULL AUTO_INCREMENT;
 
-WELCOME
 --
 -- AUTO_INCREMENT for table `task_types`
 --
