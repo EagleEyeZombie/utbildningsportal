@@ -17,7 +17,7 @@ $options = [
 $pdo = new PDO($dsn, $user, $pass, $options);
 
 $user_obj = new User($pdo);
-
+$task_obj = new Task($pdo);
 
 
 

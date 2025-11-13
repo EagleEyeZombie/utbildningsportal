@@ -1,5 +1,6 @@
 <?php
 require_once "include/class_user.php";
+require_once "include/class_task.php";
 require_once "include/config.php";
 require_once "include/functions.php";
 
