@@ -108,5 +108,29 @@ class Task {
             return false;
         }
     }
+    // NY: Hämta alla uppgifter + elevens resultat (för Dashboard)
+    public function getTasksForStudent($studentId) {
+        try {
+            // Vi använder LEFT JOIN på student_tasks för att få med resultatet OM det finns
+            $sql = "SELECT tasks.*, 
+                           users.u_name AS teacher_name, 
+                           task_types.tt_name AS type_name, 
+                           task_levels.tl_name AS level_name,
+                           student_tasks.st_score,
+                           student_tasks.st_completed
+                    FROM tasks
+                    LEFT JOIN users ON tasks.t_teacher_fk = users.u_id
+                    LEFT JOIN task_types ON tasks.t_type_fk = task_types.tt_id
+                    LEFT JOIN task_levels ON tasks.t_level_fk = task_levels.tl_id
+                    LEFT JOIN student_tasks ON tasks.t_id = student_tasks.st_t_id_fk AND student_tasks.st_s_id_fk = ?
+                    ORDER BY tasks.t_id DESC";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([$studentId]);
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
 }
 ?>

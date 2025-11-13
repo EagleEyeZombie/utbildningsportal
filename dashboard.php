@@ -12,8 +12,8 @@ if ($_SESSION['role_level'] >= 5) {
 }
 // ---------------------
 
-// Hämta alla tillgängliga uppgifter
-$allTasks = $task_obj->getAllTasks();
+// Hämta alla uppgifter INKLUSIVE elevens resultat
+$allTasks = $task_obj->getTasksForStudent($_SESSION['user_id']);
 ?>
 
 <div class="container mt-5">
@@ -32,31 +32,45 @@ $allTasks = $task_obj->getAllTasks();
         <?php if (count($allTasks) > 0): ?>
             <?php foreach ($allTasks as $task): ?>
                 <div class="col-md-4 mb-4">
-                    <div class="card shadow-sm h-100 border-0">
-                        <div class="card-header bg-white border-bottom-0 pt-3">
-                            <span class="badge bg-primary">Nivå <?= htmlspecialchars($task['level_name']) ?></span>
-                            <span class="badge bg-secondary"><?= htmlspecialchars($task['type_name']) ?></span>
+                    <div class="card shadow-sm h-100 <?php echo ($task['st_completed'] == 1) ? 'border-success' : 'border-0'; ?>">
+                        
+                        <div class="card-header bg-white border-bottom-0 pt-3 d-flex justify-content-between">
+                            <div>
+                                <span class="badge bg-primary">Nivå <?= htmlspecialchars($task['level_name']) ?></span>
+                                <span class="badge bg-secondary"><?= htmlspecialchars($task['type_name']) ?></span>
+                            </div>
+                            
+                            <?php if (isset($task['st_completed'])): ?>
+                                <?php if ($task['st_completed'] == 1): ?>
+                                    <span class="badge bg-success"><i class="bi bi-check-lg"></i> Klarad (<?= $task['st_score'] ?>%)</span>
+                                <?php elseif ($task['st_score'] !== null): ?>
+                                    <span class="badge bg-warning text-dark">Försök igen (<?= $task['st_score'] ?>%)</span>
+                                <?php endif; ?>
+                            <?php endif; ?>
                         </div>
+
                         <div class="card-body">
                             <h5 class="card-title fw-bold"><?= htmlspecialchars($task['t_name']) ?></h5>
                             <p class="card-text text-muted small">
                                 <?= htmlspecialchars(mb_strimwidth($task['t_text'], 0, 80, "...")) ?>
                             </p>
                         </div>
+                        
                         <div class="card-footer bg-white border-top-0 pb-3">
                             <div class="d-grid">
-                                <a href="task_view.php?id=<?= $task['t_id'] ?>" class="btn btn-outline-primary">
-                                    Starta Uppgift <i class="bi bi-arrow-right"></i>
+                                <a href="task_view.php?id=<?= $task['t_id'] ?>" class="btn <?php echo ($task['st_completed'] == 1) ? 'btn-outline-success' : 'btn-outline-primary'; ?>">
+                                    <?php echo ($task['st_completed'] == 1) ? 'Förbättra resultat' : 'Starta Uppgift'; ?> <i class="bi bi-arrow-right"></i>
                                 </a>
                             </div>
                         </div>
+
                     </div>
                 </div>
             <?php endforeach; ?>
         <?php else: ?>
             <div class="col-12">
                 <div class="alert alert-info">
-                    Det finns inga uppgifter upplagda just nu. Be din lärare lägga till några!
+                    Det finns inga uppgifter upplagda just nu.
                 </div>
             </div>
         <?php endif; ?>
