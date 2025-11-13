@@ -140,6 +140,47 @@ class User {
         return ['success' => false, 'error' => 'Database error: ' . $e->getMessage()];
     }
 }
+
+public function loginUser($email, $password) {
+        try {
+            // Hämta användare OCH deras roll-level baserat på e-post
+            $stmt = $this->pdo->prepare("
+                SELECT users.*, roles.r_level 
+                FROM users 
+                INNER JOIN roles ON users.u_role_fk = roles.r_id 
+                WHERE users.u_email = ?
+            ");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // 1. Kolla om användaren hittades
+            // 2. Verifiera att det inskrivna lösenordet matchar det hashade i databasen
+            if ($user && password_verify($password, $user['u_password'])) {
+                
+                // Lösenordet stämmer! Starta sessionen.
+                session_regenerate_id(true); // Extra säkerhet mot session fixation
+                
+                // Spara viktig info i sessionen
+                $_SESSION['user_id'] = $user['u_id'];
+                $_SESSION['username'] = $user['u_name']; // Bra att ha för hälsningar
+                $_SESSION['role_level'] = $user['r_level']; // Från vår JOIN
+                
+                // Uppdatera u_lastlogin (bra för admin att se)
+                $updateStmt = $this->pdo->prepare("UPDATE users SET u_lastlogin = NOW() WHERE u_id = ?");
+                $updateStmt->execute([$user['u_id']]);
+
+                // Returnera framgång och roll-level (för omdirigering)
+                return ['success' => true, 'role_level' => $user['r_level']];
+
+            } else {
+                // Antingen hittades inte e-posten, eller så var lösenordet fel
+                return ['success' => false, 'error' => 'Felaktig e-postadress eller lösenord.'];
+            }
+        } catch (Exception $e) {
+            // Databasfel
+            return ['success' => false, 'error' => 'Databasfel: ' . $e->getMessage()];
+        }
+    }
 	
 	public function searchUsers($userName){
 		
