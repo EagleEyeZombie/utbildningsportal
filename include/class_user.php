@@ -141,43 +141,36 @@ class User {
     }
 }
 
-public function loginUser($email, $password) {
+public function loginUser($input, $password) {
         try {
-            // Hämta användare OCH deras roll-level baserat på e-post
+            // ÄNDRING: Vi kollar nu om $input matchar u_email ELLER u_name
             $stmt = $this->pdo->prepare("
                 SELECT users.*, roles.r_level 
                 FROM users 
                 INNER JOIN roles ON users.u_role_fk = roles.r_id 
-                WHERE users.u_email = ?
+                WHERE users.u_email = ? OR users.u_name = ?
             ");
-            $stmt->execute([$email]);
+            
+            // Vi skickar in $input två gånger (en för email-kollen, en för namn-kollen)
+            $stmt->execute([$input, $input]); 
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // 1. Kolla om användaren hittades
-            // 2. Verifiera att det inskrivna lösenordet matchar det hashade i databasen
             if ($user && password_verify($password, $user['u_password'])) {
                 
-                // Lösenordet stämmer! Starta sessionen.
-                session_regenerate_id(true); // Extra säkerhet mot session fixation
-                
-                // Spara viktig info i sessionen
+                session_regenerate_id(true);
                 $_SESSION['user_id'] = $user['u_id'];
-                $_SESSION['username'] = $user['u_name']; // Bra att ha för hälsningar
-                $_SESSION['role_level'] = $user['r_level']; // Från vår JOIN
+                $_SESSION['username'] = $user['u_name'];
+                $_SESSION['role_level'] = $user['r_level'];
                 
-                // Uppdatera u_lastlogin (bra för admin att se)
                 $updateStmt = $this->pdo->prepare("UPDATE users SET u_lastlogin = NOW() WHERE u_id = ?");
                 $updateStmt->execute([$user['u_id']]);
 
-                // Returnera framgång och roll-level (för omdirigering)
                 return ['success' => true, 'role_level' => $user['r_level']];
 
             } else {
-                // Antingen hittades inte e-posten, eller så var lösenordet fel
-                return ['success' => false, 'error' => 'Felaktig e-postadress eller lösenord.'];
+                return ['success' => false, 'error' => 'Felaktigt användarnamn/e-post eller lösenord.'];
             }
         } catch (Exception $e) {
-            // Databasfel
             return ['success' => false, 'error' => 'Databasfel: ' . $e->getMessage()];
         }
     }

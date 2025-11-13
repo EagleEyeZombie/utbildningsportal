@@ -23,27 +23,36 @@ require_once "include/functions.php";
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+        
         <li class="nav-item">
-          <a class="nav-link active"  href="index.php">Home</a>
+          <a class="nav-link" href="index.php">Start</a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link" href="apointment.php">add apointment</a>
-        </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Dropdown
-          </a>
-          <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="#">Action</a></li>
-            <li><a class="dropdown-item" href="#">Another action</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="#">Something else here</a></li>
-          </ul>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link disabled" aria-disabled="true">Disabled</a>
-        </li>
+
+        <?php if (isset($_SESSION['user_id'])): ?>
+            <?php if (isset($_SESSION['role_level']) && $_SESSION['role_level'] >= 5): ?>
+                <li class="nav-item">
+                    <a class="nav-link" href="admin_dashboard.php">Adminpanel</a>
+                </li>
+            <?php endif; ?>
+
+            <li class="nav-item">
+                <a class="nav-link" href="dashboard.php">Min Sida</a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link btn btn-outline-danger text-danger ms-2" href="logout.php">Logga ut</a>
+            </li>
+
+        <?php else: ?>
+            <li class="nav-item">
+                <a class="nav-link" href="login.php">Logga in</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="register.php">Registrera</a>
+            </li>
+        <?php endif; ?>
+
       </ul>
       <form class="d-flex" role="search">
         <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">

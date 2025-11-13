@@ -59,7 +59,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
                         <?php echo csrfInput(); ?>
 
                         <div class="mb-3">
-                            <label for="email" class="form-label">E-post</label>
+                            <label for="email" class="form-label">E-post eller Användarnamn</label>
                             <input type="email" class="form-control" id="email" name="email" required>
                         </div>
                         
