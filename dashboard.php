@@ -19,7 +19,7 @@ $allTasks = $task_obj->getTasksForStudent($_SESSION['user_id']);
 <div class="container mt-5">
     <div class="row mb-4">
         <div class="col-md-12">
-            <div class="p-5 bg-light rounded-3 shadow-sm">
+            <div class="p-5 dashboard-hero rounded-3">
                 <h1 class="display-5 fw-bold">Välkommen, <?php echo htmlspecialchars($_SESSION['username']); ?>!</h1>
                 <p class="fs-4">Här hittar du dina tillgängliga uppgifter. Välj en och börja samla poäng!</p>
             </div>
@@ -34,17 +34,23 @@ $allTasks = $task_obj->getTasksForStudent($_SESSION['user_id']);
                 <div class="col-md-4 mb-4">
                     <div class="card shadow-sm h-100 <?php echo ($task['st_completed'] == 1) ? 'border-success' : 'border-0'; ?>">
                         
-                        <div class="card-header bg-white border-bottom-0 pt-3 d-flex justify-content-between">
-                            <div>
-                                <span class="badge bg-primary">Nivå <?= htmlspecialchars($task['level_name']) ?></span>
-                                <span class="badge bg-secondary"><?= htmlspecialchars($task['type_name']) ?></span>
+                        <div class="card-header bg-white border-bottom-0 pt-3">
+                            <div class="badge-container">
+                                <span class="badge bg-primary badge-info-pill">Nivå <?= htmlspecialchars($task['level_name']) ?></span>
+                                <span class="badge bg-secondary badge-info-pill"><?= htmlspecialchars($task['type_name']) ?></span>
                             </div>
                             
                             <?php if (isset($task['st_completed'])): ?>
                                 <?php if ($task['st_completed'] == 1): ?>
-                                    <span class="badge bg-success"><i class="bi bi-check-lg"></i> Klarad (<?= $task['st_score'] ?>%)</span>
+                                    <span class="badge bg-success badge-result">
+                                        <i class="bi bi-check-lg"></i> KLARAD
+                                        <span class="percent"><?= $task['st_score'] ?>% RÄTT</span>
+                                    </span>
                                 <?php elseif ($task['st_score'] !== null): ?>
-                                    <span class="badge bg-warning text-dark">Försök igen (<?= $task['st_score'] ?>%)</span>
+                                    <span class="badge bg-warning text-dark badge-result">
+                                        FÖRSÖK IGEN
+                                        <span class="percent"><?= $task['st_score'] ?>% RÄTT</span>
+                                    </span>
                                 <?php endif; ?>
                             <?php endif; ?>
                         </div>

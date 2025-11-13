@@ -1,0 +1,472 @@
+/* -------------------------------------------------------------------------- */
+/* TYPSNITT & VARIABLER                               */
+/* -------------------------------------------------------------------------- */
+
+/* "Cinzel Decorative" för titlar (Fantasy-känsla), "Exo 2" för brödtext (Läsbarhet) */
+@import url("https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Exo+2:wght@400;700&display=swap");
+
+:root {
+  /* Färgpalett - Clash of Clans / Fantasy tema */
+  --primary-stone: #5c626c; /* Mellangrå sten */
+  --dark-stone: #3c4450; /* Mörkare sten (för kort-bakgrund) */
+  --border-thick: #4a505a; /* Färg för den tjocka ramen */
+  --accent-gold: #ffd700; /* Guld */
+  --accent-gold-dark: #e6c200; /* Mörkare guld (hover) */
+  --background-dark: #333c4a; /* Mycket mörk bakgrund (Navbar) */
+
+  --text-white: #ffffff; /* Kritvit text */
+  --text-light-gray: #e0e0e0; /* Ljusgrå text */
+  --text-dark: #333333; /* Mörk text */
+
+  --success-green: #28a745;
+  --danger-red: #dc3545;
+}
+
+/* -------------------------------------------------------------------------- */
+/* GRUNDLÄGGANDE STYLES                               */
+/* -------------------------------------------------------------------------- */
+
+body {
+  font-family: "Exo 2", sans-serif;
+  background-color: var(--primary-stone);
+  color: var(--text-white);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Anpassad bakgrundsbild för elevsidorna */
+.student-page-background {
+  background-image: url("../assets/stone_bg_13112025.png");
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center;
+}
+
+/* Lägg till lite extra luft på sidorna generellt */
+.container {
+  padding-top: 2rem;
+  padding-bottom: 4rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* NAVIGATION (NAVBAR)                                */
+/* -------------------------------------------------------------------------- */
+
+.navbar {
+  background-color: var(--background-dark) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  border-bottom: 2px solid var(--border-thick);
+}
+
+.navbar-brand {
+  font-family: "Cinzel Decorative", serif;
+  color: var(--accent-gold) !important;
+  font-size: 1.8rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.navbar .nav-link {
+  color: var(--text-light-gray) !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: color 0.3s ease;
+}
+
+.navbar .nav-link:hover {
+  color: var(--accent-gold) !important;
+  text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+}
+
+.navbar .btn-outline-danger {
+  color: #ff6b6b !important;
+  border-color: #ff6b6b !important;
+}
+.navbar .btn-outline-danger:hover {
+  background-color: #ff6b6b !important;
+  color: white !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* KORT & PANELER (ELEVSIDOR)                         */
+/* -------------------------------------------------------------------------- */
+
+/* Standardkortet (Dashboard-kort, inloggning etc.) */
+.card {
+  /* Mörkgrå gradient för att ge djup */
+  background: linear-gradient(145deg, #3c4450, #4a5463);
+  border: 6px solid var(--border-thick); /* TJOCK GRÅ STENRAM */
+  border-radius: 15px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6); /* Djup skugga */
+  transition: transform 0.2s, box-shadow 0.2s;
+  color: var(--text-white); /* Vit text som standard */
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.7);
+  /* Ljusare gradient vid hover för interaktiv känsla */
+  background: linear-gradient(145deg, #4a5463, #556070);
+}
+
+/* Kortets rubrikdel */
+.card-header {
+  background-color: rgba(0, 0, 0, 0.2) !important; /* Mörkare tonslag */
+  border-bottom: 2px solid var(--border-thick) !important;
+  color: var(--accent-gold);
+  font-family: "Cinzel Decorative", serif;
+  font-weight: 700;
+  padding: 1.2rem;
+  font-size: 1.1rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Kortets innehåll */
+.card-body {
+  background-color: transparent;
+  padding: 1.5rem;
+}
+
+/* Rubriker inuti kortet */
+.card-body h5.card-title {
+  font-family: "Cinzel Decorative", serif;
+  font-size: 1.6rem;
+  color: var(--accent-gold);
+  margin-bottom: 0.8rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Brödtext inuti kortet - VIKTIGT FÖR LÄSBARHET */
+.card-body p.card-text {
+  font-size: 1.15rem;
+  color: #ffffff !important; /* Tvinga texten till kritvit */
+  line-height: 1.6;
+  text-shadow: 1px 1px 2px #000000; /* Svart skugga bakom texten för maximal läsbarhet */
+  opacity: 1; /* Säkerställ att den inte är genomskinlig */
+}
+
+.card-footer {
+  border-top: 2px solid var(--border-thick) !important;
+  background-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* DASHBOARD HERO (VÄLKOMSTPANEL)                     */
+/* -------------------------------------------------------------------------- */
+
+.dashboard-hero {
+  /* Grå/Sten gradient - ser ut som blocket i din bild */
+  background: linear-gradient(to bottom, #5c626c, #4b515a);
+  border: 6px solid var(--border-thick);
+  border-radius: 15px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+  padding: 3rem !important;
+  text-align: center;
+  color: white;
+}
+
+.dashboard-hero h1 {
+  font-family: "Cinzel Decorative", serif;
+  color: var(--accent-gold);
+  text-shadow: 2px 2px 0px #000000; /* Hårdare svart skugga (Cartoon-stil) */
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+}
+
+.dashboard-hero p.lead {
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 400;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9); /* Stark skugga för läsbarhet */
+}
+
+/* -------------------------------------------------------------------------- */
+/* QUIZ / TASK VIEW STYLES                            */
+/* -------------------------------------------------------------------------- */
+
+/* Instruktionsrutan */
+.task-instruction-panel {
+  background-color: rgba(60, 68, 80, 0.9);
+  border: 3px dashed var(--accent-gold); /* Guldig streckad ram */
+  border-radius: 15px;
+  padding: 2.5rem;
+  color: var(--text-white);
+  font-size: 1.25rem;
+  line-height: 1.8;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
+}
+
+/* Svarsalternativ (Knappar/Radio) */
+.list-group-item {
+  background-color: rgba(50, 55, 65, 0.9);
+  border: 2px solid var(--border-thick);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  color: var(--text-light-gray);
+  padding: 1.2rem;
+  font-size: 1.2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s;
+}
+
+.list-group-item:hover {
+  background-color: rgba(60, 68, 80, 1);
+  border-color: var(--accent-gold); /* Guldram vid hover */
+  transform: scale(1.01);
+}
+
+.list-group-item input[type="radio"]:checked + span {
+  color: var(--accent-gold);
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+/* -------------------------------------------------------------------------- */
+/* KNAPPAR & BADGES                                   */
+/* -------------------------------------------------------------------------- */
+
+.btn {
+  border-radius: 8px;
+  font-weight: 700;
+  padding: 12px 25px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s;
+}
+
+.btn:active {
+  transform: translateY(2px); /* Klick-effekt */
+}
+
+.btn-primary {
+  background-color: var(--accent-gold);
+  border-color: var(--accent-gold);
+  color: #2c2c2c; /* Mörk text på guldknapp för kontrast */
+}
+.btn-primary:hover {
+  background-color: var(--accent-gold-dark);
+  border-color: var(--accent-gold-dark);
+  color: #000;
+}
+
+.btn-success {
+  background-color: var(--success-green);
+  border-color: var(--success-green);
+}
+
+.btn-outline-primary {
+  color: var(--accent-gold);
+  border-color: var(--accent-gold);
+  border-width: 2px;
+}
+.btn-outline-primary:hover {
+  background-color: var(--accent-gold);
+  color: #2c2c2c;
+}
+
+/* Fix för Nivå och Typ badges */
+.badge-info-pill {
+  display: flex; /* ÄNDRAT: Från inline-block till flex */
+  justify-content: center; /* Centrera horisontellt */
+  align-items: center; /* Centrera vertikalt */
+  width: 48%;
+  min-height: 40px; /* Tvinga en viss höjd så de ser lika stora ut */
+  margin-bottom: 10px;
+  padding: 0.5em 0.2em; /* Lite mindre padding på sidorna */
+}
+
+/* Container för badgarna så de hamnar bredvid varandra */
+.badge-container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+/* Fix för Resultat-badgen (Klarad 100%) */
+.badge-result {
+  display: flex;
+  flex-direction: row; /* ÄNDRAT: Från column till row (på rad) */
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 15px 0;
+  font-size: 1.1rem;
+  gap: 10px; /* NY: Avstånd mellan "KLARAD" och "100%" */
+}
+
+.badge-result span.percent {
+  font-size: 1.1rem; /* Samma storlek som texten */
+  opacity: 1;
+  margin-top: 0; /* Ta bort marginalen vi lade till förut */
+  font-weight: 800; /* Gör procenten lite fetare */
+}
+
+/* Progress Bar */
+.progress {
+  border-radius: 15px;
+  height: 35px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border: 2px solid var(--border-thick);
+}
+
+.progress-bar {
+  background-color: var(--success-green);
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 35px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Badges */
+.badge {
+  border-radius: 6px;
+  padding: 0.6em 1em;
+  font-size: 0.9em;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+.badge.bg-primary {
+  background-color: var(--accent-gold) !important;
+  color: #2c2c2c !important;
+}
+.badge.bg-secondary {
+  background-color: var(--border-thick) !important;
+  color: white !important;
+  border: 1px solid white;
+}
+.badge.bg-success {
+  background-color: var(--success-green) !important;
+}
+
+/* Formulärfält */
+.form-control,
+.form-select {
+  background-color: rgba(255, 255, 255, 0.9); /* Ljusa fält för att skriva i */
+  border: 2px solid var(--border-thick);
+  color: #333;
+  font-size: 1.1rem;
+  padding: 0.8rem;
+}
+.form-control:focus {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 0.25rem rgba(255, 215, 0, 0.5);
+}
+.form-label {
+  color: var(--accent-gold);
+  font-size: 1.2rem;
+  text-shadow: 1px 1px 2px black;
+}
+
+/* -------------------------------------------------------------------------- */
+/* ADMIN MODE (RESET STYLES)                          */
+/* -------------------------------------------------------------------------- */
+/* Dessa stilar gäller ENDAST när man är admin, för att hålla det rent */
+
+body.admin-mode {
+  background-color: #f4f6f9;
+  background-image: none; /* Ingen stenbakgrund */
+  color: #333;
+  font-family: "Nunito", sans-serif;
+}
+
+body.admin-mode .navbar {
+  background-color: #343a40 !important;
+  border-bottom: none;
+  box-shadow: none;
+}
+
+body.admin-mode .navbar-brand {
+  color: #fff !important;
+  font-family: "Nunito", sans-serif;
+  text-shadow: none;
+}
+
+body.admin-mode .navbar .nav-link {
+  color: rgba(255, 255, 255, 0.75) !important;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+body.admin-mode .container {
+  padding-top: 1rem;
+}
+
+body.admin-mode .card {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.125);
+  border-radius: 0.25rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  color: #212529;
+}
+
+body.admin-mode .card:hover {
+  transform: none;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+body.admin-mode .card-header {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.125) !important;
+  color: #212529;
+  font-family: "Nunito", sans-serif;
+  font-weight: 500;
+  text-shadow: none;
+  padding: 0.5rem 1rem;
+}
+
+body.admin-mode .card-body h5.card-title {
+  font-family: "Nunito", sans-serif;
+  color: #212529;
+  font-size: 1.25rem;
+  text-shadow: none;
+}
+
+body.admin-mode .card-body p.card-text {
+  color: #212529;
+  font-size: 1rem;
+  text-shadow: none;
+}
+
+body.admin-mode .btn {
+  border-radius: 0.2rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  box-shadow: none;
+  padding: 0.375rem 0.75rem;
+}
+
+body.admin-mode .btn-primary {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+  color: white;
+}
+
+body.admin-mode .alert-info {
+  background-color: #cff4fc;
+  border-color: #b6effb;
+  color: #055160;
+}
+
+/* TVINGAD FIX FÖR GRÖN KNAPP */
+.card .btn-outline-success {
+  background-color: rgb(
+    255,
+    249,
+    168
+  ) !important; /* Ljusgrön, genomskinlig bakgrund */
+  border-color: #28a745 !important;
+  color: #28a745 !important; /* Grön text */
+  text-shadow: none !important; /* Ingen skugga, för renare text */
+  font-weight: 800 !important;
+  border-width: 3px !important;
+}
+
+.card .btn-outline-success:hover {
+  background-color: #28a745 !important; /* Helt grön vid hover */
+  color: #ffffff !important; /* Vit text vid hover */
+}

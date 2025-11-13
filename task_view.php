@@ -39,7 +39,7 @@ $totalSteps = count($questions) + 1; // +1 för att texten är första steget
                             <span class="badge bg-secondary mb-2"><?= htmlspecialchars($task['type_name']) ?></span>
                             <h1 class="card-title mb-4"><?= htmlspecialchars($task['t_name']) ?></h1>
                             
-                            <div class="p-4 bg-light rounded border mb-4">
+                            <div class="task-instruction-panel mb-4">
                                 <p class="lead" style="white-space: pre-wrap;"><?= htmlspecialchars($task['t_text']) ?></p>
                             </div>
 
