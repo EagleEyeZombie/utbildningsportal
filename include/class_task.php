@@ -49,13 +49,16 @@ class Task {
     }
 
     // NY: Skapa en ny uppgift
-    public function createTask($name, $typeId, $levelId, $teacherId, $text, $questionsJson) {
+    // ÄNDRAD: Tar nu emot $t_xp
+    public function createTask($name, $typeId, $levelId, $teacherId, $text, $questionsJson, $t_xp) {
         try {
-            $sql = "INSERT INTO tasks (t_name, t_type_fk, t_level_fk, t_teacher_fk, t_text, t_questions) 
-                    VALUES (?, ?, ?, ?, ?, ?)";
+            // ÄNDRAD: Lade till t_xp i SQL
+            $sql = "INSERT INTO tasks (t_name, t_type_fk, t_level_fk, t_teacher_fk, t_text, t_questions, t_xp) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?)";
             $stmt = $this->pdo->prepare($sql);
             
-            if ($stmt->execute([$name, $typeId, $levelId, $teacherId, $text, $questionsJson])) {
+            // ÄNDRAD: Lade till $t_xp i execute
+            if ($stmt->execute([$name, $typeId, $levelId, $teacherId, $text, $questionsJson, $t_xp])) {
                 return ['success' => true];
             } else {
                 return ['success' => false, 'error' => 'Kunde inte spara uppgiften.'];

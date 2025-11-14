@@ -27,6 +27,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
     $tText = cleanInput($_POST['t_text']); // Instruktioner
     $teacherId = $_SESSION['user_id'];
 
+    // LÄGG TILL DENNA RAD HÄR:
+    $tXp = cleanInput($_POST['t_xp']); // Hämta XP-värdet från formuläret
+
     // Hantera frågorna (som skickas som en array från formuläret)
     // Vi gör om arrayen till JSON för att spara den smidigt i databasen
     $questionsData = [];
@@ -47,7 +50,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
     $jsonQuestions = json_encode($questionsData, JSON_UNESCAPED_UNICODE);
 
     // Spara via klassen
-    $result = $task_obj->createTask($tName, $tType, $tLevel, $teacherId, $tText, $jsonQuestions);
+    // ÄNDRA DENNA RAD SÅ ATT DEN INKLUDERAR $tXp PÅ SLUTET:
+    $result = $task_obj->createTask($tName, $tType, $tLevel, $teacherId, $tText, $jsonQuestions, $tXp);
 
     if ($result['success']) {
         $successMsg = "Uppgiften skapad! <a href='admin_tasks.php'>Tillbaka till listan</a>";
@@ -77,7 +81,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                     <div class="card-body">
                         <div class="mb-3">
                             <label class="form-label">Uppgiftens Namn</label>
-                            <input type="text" name="t_name" class="form-control" required placeholder="T.ex. Verb och Substantiv">
+                            <input type="text" name="t_name" class="form-control" required placeholder="T.ex. Nalle går till butiken">
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
@@ -96,10 +100,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                                     <?php endforeach; ?>
                                 </select>
                             </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Poäng (XP)</label>
+                                <input type="number" name="t_xp" class="form-control" value="10" required>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Instruktioner / Text</label>
-                            <textarea name="t_text" class="form-control" rows="3" placeholder="Förklaring till eleven..."></textarea>
+                            <textarea name="t_text" class="form-control" rows="3" placeholder="Övningens text..."></textarea>
                         </div>
                     </div>
                 </div>

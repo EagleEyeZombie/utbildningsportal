@@ -161,6 +161,8 @@ public function loginUser($input, $password) {
                 $_SESSION['user_id'] = $user['u_id'];
                 $_SESSION['username'] = $user['u_name'];
                 $_SESSION['role_level'] = $user['r_level'];
+                $_SESSION['user_xp'] = $user['u_xp'];
+                $_SESSION['user_level'] = $user['u_level'];
                 
                 $updateStmt = $this->pdo->prepare("UPDATE users SET u_lastlogin = NOW() WHERE u_id = ?");
                 $updateStmt->execute([$user['u_id']]);

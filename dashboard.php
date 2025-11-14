@@ -26,6 +26,36 @@ $allTasks = $task_obj->getTasksForStudent($_SESSION['user_id']);
         </div>
     </div>
 
+    <!-- HÄR BÖRJAR DEN NYA KODEN FÖR POÄNG/LEVEL -->
+    <div class="row mt-4 justify-content-center">
+        <div class="col-md-4 mb-4">
+            <div class="card text-center shadow-sm">
+                <div class="card-header">
+                    Dina Poäng
+                </div>
+                <div class="card-body p-4">
+                    <p class="card-text display-4 text-white fw-bold">
+                        <?php echo isset($_SESSION['user_xp']) ? $_SESSION['user_xp'] : 0; ?> XP
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card text-center shadow-sm">
+                <div class="card-header">
+                    Din Nivå
+                </div>
+                <div class="card-body p-4">
+                    <p class="card-text display-4 text-white fw-bold">
+                        Nivå <?php echo isset($_SESSION['user_level']) ? $_SESSION['user_level'] : 1; ?>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- SLUT PÅ NY KOD -->
+
+
     <h3 class="mb-3">Tillgängliga Uppgifter</h3>
 
     <div class="row">
