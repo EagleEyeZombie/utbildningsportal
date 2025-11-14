@@ -28,6 +28,28 @@ class Task {
         }
     }
 
+    // NY: Hämtar alla uppgifter skapade av en specifik lärare
+    public function getTasksByTeacher($teacherId) {
+        try {
+            $sql = "SELECT tasks.*, 
+                           users.u_name AS teacher_name, 
+                           task_types.tt_name AS type_name, 
+                           task_levels.tl_name AS level_name
+                    FROM tasks
+                    LEFT JOIN users ON tasks.t_teacher_fk = users.u_id
+                    LEFT JOIN task_types ON tasks.t_type_fk = task_types.tt_id
+                    LEFT JOIN task_levels ON tasks.t_level_fk = task_levels.tl_id
+                    WHERE tasks.t_teacher_fk = ?  -- Här är filtret!
+                    ORDER BY tasks.t_id DESC";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([$teacherId]);
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            return []; // Returnera tom array vid fel
+        }
+    }
+
     // NY: Hämta alla uppgiftstyper
     public function getAllTypes() {
         try {
