@@ -71,8 +71,8 @@ if ($filter === 'my') {
                                     </td>
                                     
                                     <td>
-                                        <a href="#" class="btn btn-sm btn-primary">Redigera</a>
-                                        <a href="#" class="btn btn-sm btn-danger">Ta bort</a>
+                                        <a href="admin_edit_task.php?id=<?= $task['t_id'] ?>" class="btn btn-sm btn-primary">Redigera</a>
+                                        <a href="delete_task.php?id=<?= $task['t_id'] ?>" class="btn btn-sm btn-danger">Ta bort</a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

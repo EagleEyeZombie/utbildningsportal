@@ -157,5 +157,51 @@ class Task {
             return [];
         }
     }
+
+
+    // NY: Tar bort en uppgift
+    // Tack vare "ON DELETE CASCADE" i databasen, raderas alla 
+    // student_tasks (resultat) automatiskt när uppgiften tas bort.
+    public function deleteTask($taskId) {
+        try {
+            $sql = "DELETE FROM tasks WHERE t_id = ?";
+            $stmt = $this->pdo->prepare($sql);
+            
+            if ($stmt->execute([$taskId])) {
+                return ['success' => true];
+            } else {
+                return ['success' => false, 'error' => 'Kunde inte ta bort uppgiften.'];
+            }
+        } catch (PDOException $e) {
+            return ['success' => false, 'error' => 'Databasfel: ' . $e->getMessage()];
+        }
+    }
+
+    // NY: Uppdaterar en befintlig uppgift
+    public function updateTask($taskId, $name, $typeId, $levelId, $text, $questionsJson, $t_xp) {
+        try {
+            $sql = "UPDATE tasks SET 
+                        t_name = ?, 
+                        t_type_fk = ?, 
+                        t_level_fk = ?, 
+                        t_text = ?, 
+                        t_questions = ?, 
+                        t_xp = ? 
+                    WHERE t_id = ?";
+            
+            $stmt = $this->pdo->prepare($sql);
+            
+            // Vi skickar $taskId sist i arrayen, eftersom det matchar '?' i WHERE
+            if ($stmt->execute([$name, $typeId, $levelId, $text, $questionsJson, $t_xp, $taskId])) {
+                return ['success' => true];
+            } else {
+                return ['success' => false, 'error' => 'Kunde inte uppdatera uppgiften.'];
+            }
+        } catch (PDOException $e) {
+            return ['success' => false, 'error' => 'Databasfel: ' . $e->getMessage()];
+        }
+    }
 }
+
+
 ?>
