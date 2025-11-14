@@ -19,40 +19,38 @@ $task = $task_obj->getTaskById($taskId);
 if (!$task) {
     die("Hittade ingen uppgift med detta ID.");
 }
-// Avkoda frågorna så vi kan använda dem i JavaScript
 $questions = json_decode($task['t_questions'], true);
-$taskTypeName = strtolower($task['type_name']); // t.ex. "flervalsfrågor"
+$taskTypeName = strtolower($task['type_name']);
 
 // 3. HÄMTA LISTOR FÖR DROPDOWNS
 $types = $task_obj->getAllTypes();
 $levels = $task_obj->getAllLevels();
-
+$allClasses = $task_obj->getAllClasses(); // <-- NY
 $errorMsg = "";
 $successMsg = "";
 
 // 4. HANTERA FORMULÄR-INLÄMNING (NÄR MAN SPARAR ÄNDRINGAR)
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
     
-    // CSRF Check
     if (!verifyCsrfToken($_POST['csrf_token'])) {
         die("Ogiltig CSRF-token.");
     }
 
-    // Hämta all data från formuläret
     $tName = cleanInput($_POST['t_name']);
-    $tType = cleanInput($_POST['t_type']); // IDt
+    $tType = cleanInput($_POST['t_type']); 
     $tLevel = cleanInput($_POST['t_level']);
     $tText = cleanInput($_POST['t_text']); 
     $tXp = cleanInput($_POST['t_xp']);
+    $tClass = cleanInput($_POST['t_class']); // <-- NY
+
+    $tClass = empty($tClass) ? null : $tClass; // <-- NY
 
     $questionsData = [];
     
-    // Hämta namnet på typen vi valde (för att veta vilken array vi ska läsa)
     $typeNameQuery = $pdo->prepare("SELECT tt_name FROM task_types WHERE tt_id = ?");
     $typeNameQuery->execute([$tType]);
     $postedTaskTypeName = strtolower($typeNameQuery->fetchColumn());
 
-    // Packa om JSON baserat på vilken typ som skickades
     if (strpos($postedTaskTypeName, 'flerval') !== false) {
         if (isset($_POST['questions_mc'])) {
             foreach ($_POST['questions_mc'] as $q) {
@@ -74,8 +72,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
 
     $jsonQuestions = json_encode($questionsData, JSON_UNESCAPED_UNICODE);
 
-    // Använd den NYA updateTask-metoden
-    $result = $task_obj->updateTask($taskId, $tName, $tType, $tLevel, $tText, $jsonQuestions, $tXp);
+    // Använd den uppdaterade updateTask-metoden - LADE TILL $tClass
+    $result = $task_obj->updateTask($taskId, $tName, $tType, $tLevel, $tClass, $tText, $jsonQuestions, $tXp);
 
     if ($result['success']) {
         $successMsg = "Uppgiften har uppdaterats! <a href='admin_tasks.php'>Tillbaka till listan</a>";
@@ -111,8 +109,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
                             <label class="form-label">Uppgiftens Namn</label>
                             <input type="text" name="t_name" class="form-control" required value="<?= htmlspecialchars($task['t_name']) ?>">
                         </div>
+                        
                         <div class="row">
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label">Typ av uppgift</label>
                                 <select name="t_type" id="taskTypeDropdown" class="form-select" required>
                                     <?php foreach ($types as $t): ?>
@@ -122,7 +121,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label">Svårighetsgrad</label>
                                 <select name="t_level" class="form-select" required>
                                     <?php foreach ($levels as $l): ?>
@@ -132,7 +131,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Klass (Valfri)</label>
+                                <select name="t_class" class="form-select">
+                                    <option value="">Ingen specifik klass</option>
+                                    <?php foreach ($allClasses as $class): ?>
+                                        <option value="<?= $class['c_id'] ?>" <?php echo ($class['c_id'] == $task['t_class_fk']) ? 'selected' : ''; ?>>
+                                            <?= htmlspecialchars($class['c_name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label">Poäng (XP)</label>
                                 <input type="number" name="t_xp" class="form-control" value="<?= htmlspecialchars($task['t_xp']) ?>" required>
                             </div>
@@ -182,7 +192,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
 
 <script>
     // 1. DATA FRÅN PHP
-    // Vi skickar in den befintliga frågedatan från PHP till JavaScript
     const existingQuestions = <?php echo json_encode($questions); ?>;
     const taskType = "<?php echo $taskTypeName; ?>";
 
@@ -192,7 +201,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
         questionCount++;
         const container = document.getElementById('questions-container');
         
-        // Sätt default-värden om ingen data skickas in
         const q = data ? data.q : '';
         const a = data ? data.a : '';
         const w1 = data ? data.w1 : '';
@@ -231,7 +239,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
         const container = document.getElementById('tf-questions-container');
         
         const q = data ? data.q : '';
-        const a = data ? data.a : 'Sant'; // 'Sant' är default
+        const a = data ? data.a : 'Sant'; 
         
         const html = `
         <div class="border p-3 mb-3 rounded bg-light position-relative" id="tf-q-row-${tfQuestionCount}">
@@ -272,13 +280,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
             if (existingQuestions && existingQuestions.length > 0) {
                 existingQuestions.forEach(q => addQuestionField(q));
             } else {
-                addQuestionField(); // Lägg till ett tomt fält om inga frågor fanns
+                addQuestionField(); 
             }
         } else if (taskType.includes('sant/falskt')) {
             if (existingQuestions && existingQuestions.length > 0) {
                 existingQuestions.forEach(q => addTrueFalseField(q));
             } else {
-                addTrueFalseField(); // Lägg till ett tomt fält
+                addTrueFalseField();
             }
         }
     };
