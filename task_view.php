@@ -16,7 +16,8 @@ if (!$task) {
 }
 
 $questions = json_decode($task['t_questions'], true);
-$totalSteps = count($questions) + 1; // +1 för att texten är första steget
+$totalSteps = count($questions) + 1; // +1 för texten
+$taskTypeName = strtolower($task['type_name']); // För att kolla vilken typ det är
 ?>
 
 <div class="container mt-5 mb-5">
@@ -56,13 +57,6 @@ $totalSteps = count($questions) + 1; // +1 för att texten är första steget
                 $qCount = 0;
                 foreach ($questions as $index => $q): 
                     $qCount++;
-                    
-                    $options = [];
-                    $options[] = $q['a']; 
-                    if (!empty($q['w1'])) $options[] = $q['w1'];
-                    if (!empty($q['w2'])) $options[] = $q['w2'];
-                    if (!empty($q['w3'])) $options[] = $q['w3'];
-                    shuffle($options);
                 ?>
                     <div class="step-card d-none" id="step-<?= $qCount ?>">
                         <div class="card shadow border-0">
@@ -70,17 +64,43 @@ $totalSteps = count($questions) + 1; // +1 för att texten är första steget
                                 <h4 class="m-0">Fråga <?= $qCount ?> av <?= count($questions) ?></h4>
                             </div>
                             <div class="card-body p-4">
-                                <h5 class="mb-4"><?= htmlspecialchars($q['q']) ?></h5>
                                 
-                                <div class="list-group mb-4">
-                                    <?php foreach ($options as $opt): ?>
-                                        <label class="list-group-item list-group-item-action p-3 border rounded mb-2">
-                                            <input class="form-check-input me-2" type="radio" name="answers[<?= $qCount ?>]" value="<?= htmlspecialchars($opt) ?>" required onclick="enableNextBtn(<?= $qCount ?>)">
-                                            <?= htmlspecialchars($opt) ?>
-                                        </label>
-                                    <?php endforeach; ?>
-                                </div>
+                                <?php if (strpos($taskTypeName, 'flerval') !== false): ?>
+                                    <h5 class="mb-4"><?= htmlspecialchars($q['q']) ?></h5>
+                                    <div class="list-group mb-4">
+                                        <?php
+                                        // Blanda flervalsalternativen
+                                        $options = [];
+                                        $options[] = ['text' => $q['a'], 'value' => $q['a']]; // Rätt svar
+                                        if (!empty($q['w1'])) $options[] = ['text' => $q['w1'], 'value' => $q['w1']];
+                                        if (!empty($q['w2'])) $options[] = ['text' => $q['w2'], 'value' => $q['w2']];
+                                        if (!empty($q['w3'])) $options[] = ['text' => $q['w3'], 'value' => $q['w3']];
+                                        shuffle($options);
+                                        ?>
+                                        <?php foreach ($options as $opt): ?>
+                                            <label class="list-group-item list-group-item-action p-3 border rounded mb-2">
+                                                <input class="form-check-input me-2" type="radio" name="answers[<?= $qCount ?>]" value="<?= htmlspecialchars($opt['value']) ?>" required onclick="enableNextBtn(<?= $qCount ?>)">
+                                                <span><?= htmlspecialchars($opt['text']) ?></span>
+                                            </label>
+                                        <?php endforeach; ?>
+                                    </div>
 
+                                <?php elseif (strpos($taskTypeName, 'sant/falskt') !== false): ?>
+                                    <h5 class="mb-4">Påstående:</h5>
+                                    <p class="lead mb-4 p-3 bg-light border rounded"><?= htmlspecialchars($q['q']) ?></p>
+                                    
+                                    <div class="list-group mb-4">
+                                        <label class="list-group-item list-group-item-action p-3 border rounded mb-2">
+                                            <input class="form-check-input me-2" type="radio" name="answers[<?= $qCount ?>]" value="Sant" required onclick="enableNextBtn(<?= $qCount ?>)">
+                                            <span><i class="bi bi-check-circle-fill text-success"></i> Sant</span>
+                                        </label>
+                                        <label class="list-group-item list-group-item-action p-3 border rounded mb-2">
+                                            <input class="form-check-input me-2" type="radio" name="answers[<?= $qCount ?>]" value="Falskt" required onclick="enableNextBtn(<?= $qCount ?>)">
+                                            <span><i class="bi bi-x-circle-fill text-danger"></i> Falskt</span>
+                                        </label>
+                                    </div>
+                                <?php endif; ?>
+                                
                                 <div class="d-flex justify-content-between">
                                     <button type="button" class="btn btn-outline-secondary" onclick="prevStep()">
                                         <i class="bi bi-arrow-left"></i> Tillbaka
@@ -102,23 +122,20 @@ $totalSteps = count($questions) + 1; // +1 för att texten är första steget
                 <?php endforeach; ?>
 
             </form>
-
         </div>
     </div>
 </div>
 
 <script>
     let currentStep = 0;
-    const totalSteps = <?= $totalSteps ?>; // Texten + Antal frågor
+    const totalSteps = <?= $totalSteps ?>; 
 
     function updateProgress() {
-        // Räkna ut procent: (Nuvarande steg / (Totalt - 1)) * 100
-        // Vi tar -1 för att steget "0" (texten) ska vara 0% eller en liten startbit.
         let percent = 0;
         if (currentStep > 0) {
             percent = (currentStep / (totalSteps - 1)) * 100;
         } else {
-            percent = 5; // Lite färg i början bara
+            percent = 5; 
         }
         
         const bar = document.getElementById('progressBar');
@@ -134,13 +151,8 @@ $totalSteps = count($questions) + 1; // +1 för att texten är första steget
     }
 
     function nextStep() {
-        // Dölj nuvarande
         document.getElementById('step-' + currentStep).classList.add('d-none');
-        
-        // Öka steg
         currentStep++;
-        
-        // Visa nästa
         const nextEl = document.getElementById('step-' + currentStep);
         if(nextEl) {
             nextEl.classList.remove('d-none');
@@ -149,18 +161,12 @@ $totalSteps = count($questions) + 1; // +1 för att texten är första steget
     }
 
     function prevStep() {
-        // Dölj nuvarande
         document.getElementById('step-' + currentStep).classList.add('d-none');
-        
-        // Minska steg
         currentStep--;
-        
-        // Visa föregående
         document.getElementById('step-' + currentStep).classList.remove('d-none');
         updateProgress();
     }
 
-    // Aktivera knappen när man valt ett svar
     function enableNextBtn(stepId) {
         const btn = document.getElementById('btn-next-' + stepId);
         if(btn) {

@@ -6,82 +6,83 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
-
-// Endast POST tillåts
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     header("Location: dashboard.php");
     exit;
 }
-
-// CSRF Check
 if (!isset($_POST['csrf_token']) || !verifyCsrfToken($_POST['csrf_token'])) {
     die("Ogiltig säkerhetstoken (CSRF). Gå tillbaka och försök igen.");
 }
 
-// Hämta data från formuläret
+// Hämta data
 $taskId = $_POST['task_id'];
 $userAnswers = isset($_POST['answers']) ? $_POST['answers'] : [];
 $userId = $_SESSION['user_id'];
 
-// Hämta facit (uppgiftens data) från databasen
+// Hämta facit
 $task = $task_obj->getTaskById($taskId);
 if (!$task) {
     die("Uppgiften hittades inte.");
 }
 
-// Avkoda JSON-frågorna
 $questions = json_decode($task['t_questions'], true);
+$taskTypeName = strtolower($task['type_name']);
 $totalQuestions = count($questions);
 $correctCount = 0;
 
 // --- RÄTTNING ---
-// Loopa igenom facit (frågorna från databasen)
 foreach ($questions as $index => $q) {
-    
-    // Frågorna i formuläret är numrerade 1, 2, 3... (från $qCount)
     $questionKey = $index + 1; 
     
-    // Kolla om eleven har skickat ett svar för denna fråga
     if (isset($userAnswers[$questionKey])) {
-        
         $userAnswer = trim($userAnswers[$questionKey]);
-        $correctAnswer = trim($q['a']); // 'a' är alltid rätt svar i vår JSON-struktur
         
-        // Jämför elevens svar med facit
-        if ($userAnswer === $correctAnswer) {
-            $correctCount++;
+        // **************************************************
+        // NY LOGIK: Rätta baserat på uppgiftstyp
+        // **************************************************
+
+        if (strpos($taskTypeName, 'flerval') !== false) {
+            // 1. RÄTTA FLERVAL
+            $correctAnswer = trim($q['a']); // 'a' är rätt svar
+            if ($userAnswer === $correctAnswer) {
+                $correctCount++;
+            }
+        } 
+        elseif (strpos($taskTypeName, 'sant/falskt') !== false) {
+            // 2. RÄTTA SANT/FALSKT (NY)
+            // 'a' är antingen strängen "Sant" eller "Falskt"
+            $correctAnswer = $q['a'] ? "Sant" : "Falskt"; // (Säkerhetskoll, borde redan vara 'Sant'/'Falskt')
+            
+            // Om 'a' i JSON är en boolean (true/false) från din DOCX-fil:
+            if (is_bool($q['a'])) {
+                 $correctAnswer = $q['a'] ? "Sant" : "Falskt";
+            } else {
+                 $correctAnswer = trim($q['a']); // Om det är en sträng "Sant" / "Falskt"
+            }
+
+            if ($userAnswer === $correctAnswer) {
+                $correctCount++;
+            }
         }
+        // (Här lägger vi till 'sortering' sen)
     }
 }
 
 // --- RESULTATBERÄKNING ---
 $scorePercent = ($totalQuestions > 0) ? round(($correctCount / $totalQuestions) * 100) : 0;
-$passed = ($scorePercent >= 70) ? 1 : 0; // 1 = Godkänd (TRUE), 0 = Ej godkänd
-
+$passed = ($scorePercent >= 70) ? 1 : 0;
 
 // --- DATABASUPPDATERING (XP & RESULTAT) ---
-
-// === HÄR ÄR DEN NYA KODEN ===
-// Kolla om eleven klarade provet
 if ($passed) {
-    // Om vi klarade uppgiften, ge XP!
-    $taskXp = $task['t_xp']; // Hämta XP-värdet från uppgiften (tack vare getTaskById)
-    
-    // Uppdatera användarens totala XP i 'users'-tabellen
+    $taskXp = $task['t_xp'];
     $updateXpSql = "UPDATE users SET u_xp = u_xp + ? WHERE u_id = ?";
     $stmt = $pdo->prepare($updateXpSql);
     $stmt->execute([$taskXp, $userId]);
-    
-    // Uppdatera sessionen direkt så poängen syns på dashboarden
     $_SESSION['user_xp'] = (isset($_SESSION['user_xp']) ? $_SESSION['user_xp'] : 0) + $taskXp;
 }
-// === SLUT PÅ NY KOD ===
 
-
-// Spara resultatet (poäng och godkänd-status) i 'student_tasks'-tabellen
-// Detta görs oavsett om man klarade provet eller ej
+// Spara resultatet (oavsett om man klarade provet)
 $saved = $task_obj->saveTaskResult($userId, $taskId, $scorePercent, $passed);
-
 ?>
 
 <div class="container mt-5">

@@ -470,3 +470,10 @@ body.admin-mode .alert-info {
   background-color: #28a745 !important; /* Helt grön vid hover */
   color: #ffffff !important; /* Vit text vid hover */
 }
+
+/* FIX FÖR VIT TEXT PÅ LJUS BAKGRUND (t.ex. Sant/Falskt-påståendet) */
+.student-page-background .bg-light {
+  color: #333 !important; /* Tvinga texten att bli mörk */
+  border: 2px solid var(--border-thick); /* Lägg till en snygg ram */
+  text-shadow: none !important; /* Ta bort text-skuggan som gör den suddig */
+}
