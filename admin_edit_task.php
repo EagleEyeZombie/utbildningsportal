@@ -25,7 +25,7 @@ $taskTypeName = strtolower($task['type_name']);
 // 3. HÄMTA LISTOR FÖR DROPDOWNS
 $types = $task_obj->getAllTypes();
 $levels = $task_obj->getAllLevels();
-$allClasses = $task_obj->getAllClasses(); // <-- NY
+$allClasses = $task_obj->getAllClasses();
 $errorMsg = "";
 $successMsg = "";
 
@@ -41,9 +41,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
     $tLevel = cleanInput($_POST['t_level']);
     $tText = cleanInput($_POST['t_text']); 
     $tXp = cleanInput($_POST['t_xp']);
-    $tClass = cleanInput($_POST['t_class']); // <-- NY
-
-    $tClass = empty($tClass) ? null : $tClass; // <-- NY
+    $tClass = cleanInput($_POST['t_class']); 
+    $tClass = empty($tClass) ? null : $tClass;
 
     $questionsData = [];
     
@@ -51,6 +50,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
     $typeNameQuery->execute([$tType]);
     $postedTaskTypeName = strtolower($typeNameQuery->fetchColumn());
 
+    // Packa om JSON baserat på vilken typ som skickades
     if (strpos($postedTaskTypeName, 'flerval') !== false) {
         if (isset($_POST['questions_mc'])) {
             foreach ($_POST['questions_mc'] as $q) {
@@ -69,10 +69,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
             }
         }
     }
+    elseif (strpos($postedTaskTypeName, 'sortering') !== false) {
+        if (isset($_POST['questions_sort'][0]['sentences'])) {
+            $sentences = trim($_POST['questions_sort'][0]['sentences']);
+            $sentencesArray = preg_split('/(\r\n|\r|\n)/', $sentences, -1, PREG_SPLIT_NO_EMPTY);
+            $cleanedArray = array_map('cleanInput', $sentencesArray);
+            $questionsData = ['s' => $cleanedArray]; // Spara som 's' (sentences)
+        }
+    }
 
     $jsonQuestions = json_encode($questionsData, JSON_UNESCAPED_UNICODE);
 
-    // Använd den uppdaterade updateTask-metoden - LADE TILL $tClass
+    // Använd den uppdaterade updateTask-metoden
     $result = $task_obj->updateTask($taskId, $tName, $tType, $tLevel, $tClass, $tText, $jsonQuestions, $tXp);
 
     if ($result['success']) {
@@ -147,6 +155,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
                                 <input type="number" name="t_xp" class="form-control" value="<?= htmlspecialchars($task['t_xp']) ?>" required>
                             </div>
                         </div>
+
                         <div class="mb-3">
                             <label class="form-label">Instruktioner / Text</label>
                             <textarea name="t_text" class="form-control" rows="3"><?= htmlspecialchars($task['t_text']) ?></textarea>
@@ -154,7 +163,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
                     </div>
                 </div>
 
-                <div class="card shadow-sm task-form-section <?php echo (strpos($taskTypeName, 'flerval') === false) ? 'd-none' : ''; ?>" id="form-flerval">
+                <div class="card shadow-sm task-form-section d-none" id="form-flerval">
                     <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                         <span>Frågor (Flerval)</span>
                         <button type="button" class="btn btn-sm btn-light" onclick="addQuestionField()">+ Lägg till fråga</button>
@@ -163,13 +172,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
                         </div>
                 </div>
 
-                <div class="card shadow-sm task-form-section <?php echo (strpos($taskTypeName, 'sant/falskt') === false) ? 'd-none' : ''; ?>" id="form-sant-falskt">
+                <div class="card shadow-sm task-form-section d-none" id="form-sant-falskt">
                     <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                         <span>Frågor (Sant/Falskt)</span>
                         <button type="button" class="btn btn-sm btn-light" onclick="addTrueFalseField()">+ Lägg till påstående</button>
                     </div>
                     <div class="card-body" id="tf-questions-container">
                         </div>
+                </div>
+
+                <div class="card shadow-sm task-form-section d-none" id="form-sortering">
+                    <div class="card-header bg-secondary text-white">
+                        <span>Frågor (Sortering)</span>
+                    </div>
+                    <div class="card-body" id="sorting-questions-container">
+                        <div class="alert alert-info">
+                            Skriv meningarna i **rätt ordning**, en mening per rad.
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-bold">Sorterbara meningar</label>
+                            <textarea name="questions_sort[0][sentences]" class="form-control" rows="8"></textarea>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="d-grid mt-4">
@@ -203,7 +227,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
         
         const q = data ? data.q : '';
         const a = data ? data.a : '';
-        const w1 = data ? data.w1 : '';
+        const w1 = data ? (data.w1 || '') : '';
         const w2 = data ? (data.w2 || '') : '';
         const w3 = data ? (data.w3 || '') : '';
         
@@ -259,23 +283,65 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
         container.insertAdjacentHTML('beforeend', html);
     }
 
-    // 4. LOGIK FÖR ATT BYTA FORMULÄR
+    // 4. LOGIK FÖR SORTERING
+    function addSortingField(data = null) {
+        const container = document.getElementById('sorting-questions-container');
+        // 's' är en array av meningar. Vi gör om den till en sträng med radbrytningar.
+        const sentences = (data && data.s) ? data.s.join('\n') : '';
+        
+        const textarea = container.querySelector('textarea[name="questions_sort[0][sentences]"]');
+        textarea.value = sentences;
+    }
+
+
+    // 5. LOGIK FÖR ATT BYTA FORMULÄR (MED "DISABLED" FIX)
     const dropdown = document.getElementById('taskTypeDropdown');
     const forms = document.querySelectorAll('.task-form-section');
     
-    dropdown.addEventListener('change', function() {
-        const selectedText = this.options[this.selectedIndex].text.toLowerCase();
-        forms.forEach(form => form.classList.add('d-none'));
+    function updateForms() {
+        const selectedText = dropdown.options[dropdown.selectedIndex].text.toLowerCase();
+        
+        forms.forEach(form => {
+            form.classList.add('d-none');
+            form.querySelectorAll('input, textarea, select').forEach(input => {
+                input.disabled = true;
+                input.required = false; 
+            });
+        });
+
+        let activeFormId = null;
 
         if (selectedText.includes('flerval')) {
-            document.getElementById('form-flerval').classList.remove('d-none');
+            activeFormId = 'form-flerval';
         } else if (selectedText.includes('sant/falskt')) {
-            document.getElementById('form-sant-falskt').classList.remove('d-none');
+            activeFormId = 'form-sant-falskt';
+        } else if (selectedText.includes('sortering')) {
+            activeFormId = 'form-sortering';
         }
-    });
 
-    // 5. INITIERING (LADDA BEFINTLIGA FRÅGOR)
+        if (activeFormId) {
+            const activeForm = document.getElementById(activeFormId);
+            activeForm.classList.remove('d-none');
+            
+            activeForm.querySelectorAll('input, textarea, select').forEach(input => {
+                input.disabled = false;
+                // Återställ 'required'
+                const name = input.name;
+                if (name.includes('[question]') || name.includes('[correct]') || name.includes('[wrong1]') || name.includes('[sentences]')) {
+                    input.required = true;
+                }
+            });
+        }
+    }
+    
+    dropdown.addEventListener('change', updateForms);
+
+    // 6. INITIERING (LADDA BEFINTLIGA FRÅGOR)
     window.onload = function() {
+        // Kör updateForms() FÖRST för att ställa in rätt synlighet och 'disabled' status
+        updateForms(); 
+
+        // Fyll sedan PÅ det aktiva formuläret med data
         if (taskType.includes('flerval')) {
             if (existingQuestions && existingQuestions.length > 0) {
                 existingQuestions.forEach(q => addQuestionField(q));
@@ -288,6 +354,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
             } else {
                 addTrueFalseField();
             }
+        } else if (taskType.includes('sortering')) {
+            // 'existingQuestions' kommer vara t.ex. {'s': ['mening 1', 'mening 2']}
+            addSortingField(existingQuestions);
         }
     };
 </script>

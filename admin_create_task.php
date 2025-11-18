@@ -59,6 +59,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
             }
         }
     }
+    // *** HÄR VAR FELET - 'SORTERING' SKA LIGGA HÄR INNANFÖR ***
+    elseif (strpos(strtolower($taskTypeName), 'sortering') !== false) {
+        // 3. HANTERA SORTERING (NY)
+        if (isset($_POST['questions_sort'][0]['sentences'])) {
+            $sentences = trim($_POST['questions_sort'][0]['sentences']);
+            // Dela upp textarean i en array baserat på radbrytningar
+            $sentencesArray = preg_split('/(\r\n|\r|\n)/', $sentences, -1, PREG_SPLIT_NO_EMPTY);
+            
+            // Rensa varje mening
+            $cleanedArray = array_map('cleanInput', $sentencesArray);
+
+            // För sortering sparar vi bara en array av meningar (i rätt ordning)
+            // Vi sparar den i en 's' (sentences) nyckel
+            $questionsData = ['s' => $cleanedArray];
+        }
+    }
+    // *** SLUT PÅ FIX ***
 
     $jsonQuestions = json_encode($questionsData, JSON_UNESCAPED_UNICODE);
 
@@ -152,6 +169,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                         </div>
                 </div>
 
+                <div class="card shadow-sm task-form-section d-none" id="form-sortering">
+                    <div class="card-header bg-secondary text-white">
+                        <span>Frågor (Sortering)</span>
+                    </div>
+                    <div class="card-body" id="sorting-questions-container">
+                        <div class="alert alert-info">
+                            Skriv meningarna i **rätt ordning**, en mening per rad. Systemet kommer automatiskt att blanda dem för eleven.
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-bold">Sorterbara meningar</label>
+                            <textarea name="questions_sort[0][sentences]" class="form-control" rows="8" placeholder="Mening 1...&#10;Mening 2...&#10;Mening 3..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="d-grid mt-4">
                     <button type="submit" name="create-task" class="btn btn-success btn-lg">Spara Uppgift</button>
                 </div>
@@ -221,29 +253,61 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
         container.insertAdjacentHTML('beforeend', html);
     }
 
-    // --- Logik för att byta formulär ---
+    // --- Logik för att byta formulär (UPPDATERAD MED "DISABLED" LOGIK) ---
     const dropdown = document.getElementById('taskTypeDropdown');
     const forms = document.querySelectorAll('.task-form-section');
     
-    dropdown.addEventListener('change', function() {
-        const selectedText = this.options[this.selectedIndex].text.toLowerCase();
-        forms.forEach(form => form.classList.add('d-none'));
+    function updateForms() {
+        const selectedText = dropdown.options[dropdown.selectedIndex].text.toLowerCase();
+        
+        // 1. Dölj och INAKTIVERA alla formulär och deras fält
+        forms.forEach(form => {
+            form.classList.add('d-none');
+            form.querySelectorAll('input, textarea, select').forEach(input => {
+                input.disabled = true;
+                input.required = false; // Ta bort required från dolda fält
+            });
+        });
 
+        let activeFormId = null;
+
+        // 2. Hitta rätt formulär
         if (selectedText.includes('flerval')) {
-            document.getElementById('form-flerval').classList.remove('d-none');
+            activeFormId = 'form-flerval';
         } else if (selectedText.includes('sant/falskt')) {
-            document.getElementById('form-sant-falskt').classList.remove('d-none');
+            activeFormId = 'form-sant-falskt';
+        } else if (selectedText.includes('sortering')) {
+            activeFormId = 'form-sortering';
         }
-    });
 
-    // Initiera formulär på sidladdning
+        // 3. Visa och AKTIVERA det valda formuläret
+        if (activeFormId) {
+            const activeForm = document.getElementById(activeFormId);
+            activeForm.classList.remove('d-none');
+            
+            // Aktivera alla inputs i detta formulär och återställ 'required'
+            activeForm.querySelectorAll('input, textarea, select').forEach(input => {
+                input.disabled = false;
+                // Återställ 'required' för de fält som ska ha det (hårdkodat här för säkerhets skull)
+                if (input.name.includes('[question]') || input.name.includes('[correct]') || input.name.includes('[wrong1]') || input.name.includes('[sentences]')) {
+                    input.required = true;
+                }
+            });
+        }
+    }
+    
+    // Kör funktionen när man byter i listan
+    dropdown.addEventListener('change', updateForms);
+    
+    // Initiera formulär på sidladdning (Uppdaterad)
     function initForms() {
+        updateForms(); // Kör huvudfunktionen direkt
+
+        // Lägg till ett första tomt fält (som du hade innan)
         const selectedText = dropdown.options[dropdown.selectedIndex].text.toLowerCase();
         if (selectedText.includes('flerval')) {
-            document.getElementById('form-flerval').classList.remove('d-none');
             addQuestionField(); 
         } else if (selectedText.includes('sant/falskt')) {
-            document.getElementById('form-sant-falskt').classList.remove('d-none');
             addTrueFalseField(); 
         }
     }
