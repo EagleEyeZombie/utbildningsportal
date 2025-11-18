@@ -27,46 +27,65 @@ if (!$task) {
 
 $questions = json_decode($task['t_questions'], true);
 $taskTypeName = strtolower($task['type_name']);
-$totalQuestions = count($questions);
 $correctCount = 0;
+$totalQuestions = 0;
 
 // --- RÄTTNING ---
-foreach ($questions as $index => $q) {
-    $questionKey = $index + 1; 
+// **************************************************
+// NY LOGIK: Rätta baserat på uppgiftstyp
+// **************************************************
+
+if (strpos($taskTypeName, 'sortering') !== false) {
+    // --- 3. RÄTTA SORTERING (NY) ---
+    $correctOrder = $questions['s']; // Facit (t.ex. [A, B, C])
+    $studentOrder = $userAnswers; // Elevens svar (t.ex. [A, C, B])
     
-    if (isset($userAnswers[$questionKey])) {
-        $userAnswer = trim($userAnswers[$questionKey]);
+    $totalQuestions = count($correctOrder); // Antal meningar att rätta
+    
+    // Rätta genom att jämföra arrayerna plats för plats
+    for ($i = 0; $i < $totalQuestions; $i++) {
+        // Trimma för säkerhets skull
+        $correctSentence = trim($correctOrder[$i]);
+        $studentSentence = isset($studentOrder[$i]) ? trim($studentOrder[$i]) : '';
         
-        // **************************************************
-        // NY LOGIK: Rätta baserat på uppgiftstyp
-        // **************************************************
-
-        if (strpos($taskTypeName, 'flerval') !== false) {
-            // 1. RÄTTA FLERVAL
-            $correctAnswer = trim($q['a']); // 'a' är rätt svar
-            if ($userAnswer === $correctAnswer) {
-                $correctCount++;
-            }
-        } 
-        elseif (strpos($taskTypeName, 'sant/falskt') !== false) {
-            // 2. RÄTTA SANT/FALSKT (NY)
-            // 'a' är antingen strängen "Sant" eller "Falskt"
-            $correctAnswer = $q['a'] ? "Sant" : "Falskt"; // (Säkerhetskoll, borde redan vara 'Sant'/'Falskt')
+        if ($correctSentence === $studentSentence) {
+            $correctCount++;
+        }
+    }
+    
+} else {
+    // --- 1. & 2. RÄTTA FLERVAL ELLER SANT/FALSKT ---
+    $totalQuestions = count($questions);
+    
+    foreach ($questions as $index => $q) {
+        $questionKey = $index + 1; 
+        
+        if (isset($userAnswers[$questionKey])) {
+            $userAnswer = trim($userAnswers[$questionKey]);
             
-            // Om 'a' i JSON är en boolean (true/false) från din DOCX-fil:
-            if (is_bool($q['a'])) {
-                 $correctAnswer = $q['a'] ? "Sant" : "Falskt";
-            } else {
-                 $correctAnswer = trim($q['a']); // Om det är en sträng "Sant" / "Falskt"
-            }
+            if (strpos($taskTypeName, 'flerval') !== false) {
+                // RÄTTA FLERVAL
+                $correctAnswer = trim($q['a']); 
+                if ($userAnswer === $correctAnswer) {
+                    $correctCount++;
+                }
+            } 
+            elseif (strpos($taskTypeName, 'sant/falskt') !== false) {
+                // RÄTTA SANT/FALSKT
+                $correctAnswer = "";
+                if (isset($q['a'])) {
+                    $correctAnswer = trim($q['a']); 
+                } elseif (isset($q['correct'])) {
+                    $correctAnswer = $q['correct'] ? "Sant" : "Falskt";
+                }
 
-            if ($userAnswer === $correctAnswer) {
-                $correctCount++;
+                if ($userAnswer === $correctAnswer) {
+                    $correctCount++;
+                }
             }
         }
-        // (Här lägger vi till 'sortering' sen)
     }
-}
+} // Slut på Rättnings-logiken
 
 // --- RESULTATBERÄKNING ---
 $scorePercent = ($totalQuestions > 0) ? round(($correctCount / $totalQuestions) * 100) : 0;
@@ -81,7 +100,7 @@ if ($passed) {
     $_SESSION['user_xp'] = (isset($_SESSION['user_xp']) ? $_SESSION['user_xp'] : 0) + $taskXp;
 }
 
-// Spara resultatet (oavsett om man klarade provet)
+// Spara resultatet
 $saved = $task_obj->saveTaskResult($userId, $taskId, $scorePercent, $passed);
 ?>
 
@@ -102,7 +121,8 @@ $saved = $task_obj->saveTaskResult($userId, $taskId, $scorePercent, $passed);
                 <div class="card-body p-4">
                     <h4 class="mb-3">Du fick <?= $scorePercent ?>% rätt</h4>
                     <p class="lead">
-                        Du svarade rätt på <strong><?= $correctCount ?></strong> av <strong><?= $totalQuestions ?></strong> frågor.
+                        Du svarade rätt på <strong><?= $correctCount ?></strong> av <strong><?= $totalQuestions ?></strong> 
+                        <?php echo (strpos($taskTypeName, 'sortering') !== false) ? 'meningar' : 'frågor'; ?>.
                     </p>
 
                     <?php if ($passed): ?>
