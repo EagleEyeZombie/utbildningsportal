@@ -7,9 +7,6 @@ class Task {
         $this->pdo = $pdo;
     }
 
-    /**
-     * NY: Hämtar alla genrer
-     */
     public function getAllGenres() {
         try {
             $stmt = $this->pdo->query("SELECT * FROM genres ORDER BY g_name ASC");
@@ -19,9 +16,6 @@ class Task {
         }
     }
 
-    /**
-     * Hämtar alla klasser
-     */
     public function getAllClasses() {
         try {
             $stmt = $this->pdo->query("SELECT c_id, c_name FROM classes ORDER BY c_name ASC");
@@ -31,9 +25,6 @@ class Task {
         }
     }
 
-    /**
-     * Hämtar alla uppgiftstyper
-     */
     public function getAllTypes() {
         try {
             $stmt = $this->pdo->query("SELECT * FROM task_types");
@@ -43,9 +34,6 @@ class Task {
         }
     }
 
-    /**
-     * Hämtar alla nivåer
-     */
     public function getAllLevels() {
         try {
             $stmt = $this->pdo->query("SELECT * FROM task_levels ORDER BY tl_level ASC");
@@ -55,12 +43,8 @@ class Task {
         }
     }
 
-    /**
-     * UPPDATERAD: Tar nu emot $genreId
-     */
     public function createTask($name, $typeId, $levelId, $teacherId, $classId, $genreId, $text, $questionsJson, $t_xp) {
         try {
-            // Lade till t_genre_fk
             $sql = "INSERT INTO tasks (t_name, t_type_fk, t_level_fk, t_teacher_fk, t_class_fk, t_genre_fk, t_text, t_questions, t_xp) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $this->pdo->prepare($sql);
@@ -75,12 +59,8 @@ class Task {
         }
     }
 
-    /**
-     * UPPDATERAD: Tar nu emot $genreId
-     */
     public function updateTask($taskId, $name, $typeId, $levelId, $classId, $genreId, $text, $questionsJson, $t_xp) {
         try {
-            // Lade till t_genre_fk
             $sql = "UPDATE tasks SET 
                         t_name = ?, 
                         t_type_fk = ?, 
@@ -119,15 +99,13 @@ class Task {
         }
     }
 
-    /**
-     * UPPDATERAD: Hämtar nu även genre_name
-     */
     public function getAllTasks() {
         try {
             $sql = "SELECT tasks.*, 
                            users.u_name AS teacher_name, 
                            task_types.tt_name AS type_name, 
                            task_levels.tl_name AS level_name,
+                           task_levels.tl_level, 
                            classes.c_name AS class_name,
                            genres.g_name AS genre_name
                     FROM tasks
@@ -146,15 +124,13 @@ class Task {
         }
     }
     
-    /**
-     * UPPDATERAD: Hämtar nu även genre_name
-     */
     public function getTaskById($id) {
         try {
             $sql = "SELECT tasks.*, 
                            users.u_name AS teacher_name, 
                            task_types.tt_name AS type_name, 
                            task_levels.tl_name AS level_name,
+                           task_levels.tl_level, 
                            classes.c_name AS class_name,
                            genres.g_name AS genre_name
                     FROM tasks
@@ -174,14 +150,16 @@ class Task {
     }
 
     /**
-     * UPPDATERAD: Hämtar nu även genre_name
+     * UPPDATERAD: Nu hämtar den även tl_level!
      */
-    public function getTasksForStudent($studentId, $typeId = null) {
+    public function getTasksForStudent($studentId, $typeId = null, $genreId = null) {
         try {
+            // Notera: Vi la till task_levels.tl_level i SELECT-listan här
             $sql = "SELECT tasks.*, 
                            users.u_name AS teacher_name, 
                            task_types.tt_name AS type_name, 
                            task_levels.tl_name AS level_name,
+                           task_levels.tl_level, 
                            student_tasks.st_score,
                            student_tasks.st_completed,
                            classes.c_name AS class_name,
@@ -196,13 +174,24 @@ class Task {
                     ";
             
             $params = [$studentId]; 
+            $whereConditions = [];
 
             if ($typeId !== null && is_numeric($typeId)) {
-                $sql .= " WHERE tasks.t_type_fk = ?";
+                $whereConditions[] = "tasks.t_type_fk = ?";
                 $params[] = $typeId; 
             }
+
+            if ($genreId !== null && is_numeric($genreId)) {
+                $whereConditions[] = "tasks.t_genre_fk = ?";
+                $params[] = $genreId; 
+            }
+
+            if (count($whereConditions) > 0) {
+                $sql .= " WHERE " . implode(" AND ", $whereConditions);
+            }
             
-            $sql .= " ORDER BY tasks.t_id DESC";
+            // Sortera på NIVÅ först (så kapitel 1 kommer före kapitel 2), sen ID
+            $sql .= " ORDER BY task_levels.tl_level ASC, tasks.t_id ASC";
             
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
@@ -254,15 +243,13 @@ class Task {
         }
     }
 
-    /**
-     * UPPDATERAD: Kan nu filtrera på $genreId
-     */
     public function getTasksFiltered($teacherId = null, $typeId = null, $levelId = null, $classId = null, $genreId = null) {
         try {
             $sql = "SELECT tasks.*, 
                            users.u_name AS teacher_name, 
                            task_types.tt_name AS type_name, 
                            task_levels.tl_name AS level_name,
+                           task_levels.tl_level, 
                            classes.c_name AS class_name,
                            genres.g_name AS genre_name
                     FROM tasks
@@ -292,7 +279,6 @@ class Task {
                 $whereConditions[] = "tasks.t_class_fk = ?";
                 $params[] = $classId;
             }
-            // NY: Genre Filter
             if ($genreId !== null) {
                 $whereConditions[] = "tasks.t_genre_fk = ?";
                 $params[] = $genreId;
@@ -302,7 +288,8 @@ class Task {
                 $sql .= " WHERE " . implode(" AND ", $whereConditions);
             }
             
-            $sql .= " ORDER BY tasks.t_id DESC";
+            // Även här är det bra att sortera på Nivå
+            $sql .= " ORDER BY task_levels.tl_level ASC, tasks.t_id DESC";
             
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);

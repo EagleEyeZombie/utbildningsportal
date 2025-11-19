@@ -477,3 +477,81 @@ body.admin-mode .alert-info {
   border: 2px solid var(--border-thick); /* Lägg till en snygg ram */
   text-shadow: none !important; /* Ta bort text-skuggan som gör den suddig */
 }
+
+/* -------------------------------------------------------------------------- */
+/* FILTERKNAPPAR (DASHBOARD) - NY STOR DESIGN                                */
+/* -------------------------------------------------------------------------- */
+
+.filter-section {
+  background-color: rgba(0, 0, 0, 0.4); /* Mörkare platta bakom */
+  padding: 30px;
+  border-radius: 20px;
+  border: 3px solid var(--border-thick);
+  margin-bottom: 40px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
+}
+
+/* Kategorirubriker (Välj Spelsätt / Välj Tema) */
+.filter-label {
+  color: var(--accent-gold);
+  font-family: "Cinzel Decorative", serif; /* Byt till Fantasy-fonten för rubriken */
+  text-transform: uppercase;
+  font-size: 1.5rem; /* MYCKET STÖRRE */
+  margin-bottom: 15px;
+  display: block;
+  font-weight: 700;
+  text-shadow: 2px 2px 4px #000; /* Tydlig skugga */
+  letter-spacing: 1px;
+}
+
+/* Själva knapparna */
+.btn-filter {
+  background-color: rgba(
+    50,
+    55,
+    65,
+    0.95
+  ); /* Mörk stenbakgrund, nästan solid */
+  border: 2px solid #ffffff; /* VIT RAM SOM DU BAD OM */
+  color: #ffffff; /* Vit text */
+  margin: 8px; /* Mer mellanrum */
+  min-width: 160px; /* Bredare knappar */
+  padding: 15px 25px; /* Större klickyta */
+  font-family: "Exo 2", sans-serif; /* Läsbar font på knappen */
+  font-size: 1.1rem; /* Större text */
+  font-weight: 700;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  text-transform: uppercase; /* Versaler för "knapp-känsla" */
+}
+
+.btn-filter:hover {
+  background-color: var(--primary-stone);
+  border-color: var(--accent-gold); /* Guldram vid hover */
+  color: var(--accent-gold); /* Guldtext vid hover */
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.7);
+}
+
+/* Den aktiva knappen (Vald) */
+.btn-filter-active {
+  background-color: var(--accent-gold); /* Guld bakgrund */
+  border-color: #fff; /* Vit ram */
+  color: #2c2c2c; /* Mörk text */
+  font-weight: 800;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); /* Kraftigt guld-glow */
+  transform: scale(1.1); /* Tydligt större */
+}
+
+.btn-filter-active:hover {
+  background-color: #e6c200;
+  color: #000;
+  border-color: #fff;
+}
+
+/* Justera "Visa Allt"-knappen så den sticker ut lite */
+.filter-section .mb-4 .btn-filter {
+  font-size: 1.2rem;
+  padding: 15px 40px;
+  border-width: 3px;
+}
