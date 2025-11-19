@@ -12,6 +12,12 @@ if (isset($_SESSION['user_id'])) {
 }
 
 $errorMsg = "";
+$successMsg = ""; // Variabel för framgångsmeddelande
+
+// Kollar om vi kom hit från en lyckad registrering
+if (isset($_GET['signup']) && $_GET['signup'] == 'success') {
+    $successMsg = "Ditt konto är nu skapat! Logga in nedan.";
+}
 
 // 2. Hantera formuläret
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
@@ -22,13 +28,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
     }
 
     $email = cleanInput($_POST['email']);
-    $password = $_POST['password']; // Lösenord ska inte rensas med cleanInput, de kan innehålla specialtecken
+    $password = $_POST['password']; 
 
     // Anropa metoden i class_user.php
     $loginResult = $user_obj->loginUser($email, $password);
 
     if ($loginResult['success']) {
-        // Lyckad inloggning! Omdirigera baserat på roll.
         if ($loginResult['role_level'] >= 5) {
             header("Location: admin_dashboard.php");
         } else {
@@ -36,7 +41,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
         }
         exit;
     } else {
-        // Misslyckad inloggning
         $errorMsg = $loginResult['error'];
     }
 }
@@ -49,6 +53,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
                 <div class="card-body p-4">
                     <h2 class="text-center mb-4">Logga in</h2>
                     
+                    <!-- VISA SUCCESS MEDDELANDE -->
+                    <?php if (!empty($successMsg)): ?>
+                        <div class="alert alert-success" role="alert">
+                            <?php echo $successMsg; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- VISA FELMEDDELANDE -->
                     <?php if (!empty($errorMsg)): ?>
                         <div class="alert alert-danger" role="alert">
                             <?php echo $errorMsg; ?>
@@ -56,6 +68,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
                     <?php endif; ?>
 
                     <form action="login.php" method="POST">
+                        <!-- CSRF Token -->
                         <?php echo csrfInput(); ?>
 
                         <div class="mb-3">

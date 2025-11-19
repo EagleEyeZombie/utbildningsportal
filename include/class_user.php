@@ -1,149 +1,174 @@
 <?php
 
 class User {
-	
-	public $username;
-	public $role_level;
-	public $pdo;
-	
-	    public function __construct($pdo, $username = 'Guest', $role_level = 0) {
-			$this->username = $username;
-			$this->role_level = $role_level;
-			$this->pdo = $pdo;
-    }
-	
-	public function checkUserRegisterInfo($uname, $umail, $upass, $upassrpt, $condition, $currentUserId = null) {
-   //Steps 1-3 happens only for user creation, not user edit
-	if ($condition === "create") {   
-    // Step 1: Username Length Validation
-    if (strlen($uname) < 3 || strlen($uname) > 20) {
-        return ['success' => false, 'error' => 'Username must be between 3 and 20 characters long.'];
-    }
-
-    // Step 2: Check if username already exists (only during create, unless it's the same username)
     
-        $stmt = $this->pdo->prepare("SELECT * FROM users WHERE LOWER(u_name) = LOWER(?)");
-        $stmt->execute([strtolower($uname)]);
-        if ($stmt->rowCount() > 0) {
-            return ['success' => false, 'error' => 'Username already exists.'];
-        }
-
-
-    // Step 3: Check if email exists and validate email format
-        $stmt = $this->pdo->prepare("SELECT * FROM users WHERE LOWER(u_email) = LOWER(?)");
-        $stmt->execute([strtolower($umail)]);
-        if ($stmt->rowCount() > 0 && ($currentUserId === null || $stmt->fetch()['u_id'] !== $currentUserId)) {
-            return ['success' => false, 'error' => 'Email already exists.'];
-        }
+    public $username;
+    public $role_level;
+    public $pdo;
+    
+    public function __construct($pdo, $username = 'Guest', $role_level = 0) {
+        $this->username = $username;
+        $this->role_level = $role_level;
+        $this->pdo = $pdo;
     }
+    
+    /**
+     * Validerar registreringsdata (Nu på SVENSKA!)
+     * Returnerar en array med 'success' (true/false) och felmeddelande.
+     */
+    public function checkUserRegisterInfo($uname, $umail, $upass, $upassrpt, $condition, $currentUserId = null) {
+        
+        // Steg 1-3 gäller främst vid skapande (create) eller om man byter namn/email
+        if ($condition === "create") {   
+            
+            // Steg 1: Validera användarnamnets längd
+            if (strlen($uname) < 3 || strlen($uname) > 20) {
+                return ['success' => false, 'error' => 'Användarnamnet måste vara mellan 3 och 20 tecken långt.'];
+            }
 
-    // Step 4: Check if email is valid
-    if (!filter_var($umail, FILTER_VALIDATE_EMAIL)) {
-        return ['success' => false, 'error' => 'Invalid email format.'];
-    }
+            // Steg 2: Kolla om användarnamnet redan är upptaget
+            $stmt = $this->pdo->prepare("SELECT * FROM users WHERE LOWER(u_name) = LOWER(?)");
+            $stmt->execute([strtolower($uname)]);
+            if ($stmt->rowCount() > 0) {
+                return ['success' => false, 'error' => 'Användarnamnet är upptaget.'];
+            }
 
-
-	if($condition !== "edit" || $upass !== ""){
-		// Step 5: Check if passwords match
-		if ($upass !== $upassrpt) {
-			return ['success' => false, 'error' => 'Passwords do not match.'];
-		}
-
-		// Step 6: Validate password strength
-	   if (strlen($upass) < 6) {
-			return ['success' => false, 'error' => 'Password must be at least 6 characters long.'];
-		}
-		if (!preg_match('/[A-Z]/', $upass)) {
-			return ['success' => false, 'error' => 'Password must contain at least one uppercase letter.'];
-		}
-		if (!preg_match('/[!@#$%^&*(),.?":{}|<>]/', $upass)) {
-			return ['success' => false, 'error' => 'Password must contain at least one special character.'];
-		}
-	}
-
-    // ✅ All checks passed
-    return ['success' => true];
-}
-	
-	public function createUser($uname, $ufname, $ulname, $umail, $upass, $urole){
-		try {
-			// Hash the password securely
-			$hashedPassword = password_hash($upass, PASSWORD_DEFAULT);
-
-			// Begin transaction
-			$this->pdo->beginTransaction();
-
-			// Insert user into database
-			$stmt = $this->pdo->prepare("INSERT INTO users (u_name, u_fname, u_lname, u_email, u_password, u_isactive, u_role_fk) 
-										 VALUES (?, ?, ?, ?, ?, ?, ?)");
-			$stmt->execute([$uname, $ufname, $ulname, $umail, $hashedPassword, 1, $urole]);
-
-			// Commit transaction
-			$this->pdo->commit();
-
-			return ['success' => true];
-
-		} 
-		catch (Exception $e) {
-			// Rollback if something goes wrong
-			$this->pdo->rollBack();
-			return ['success' => false, 'error' => 'Database error: ' . $e->getMessage()];
-		}
-	}
-	
-	public function editUser($userId, $uname, $ufname, $ulname, $umail, $upass, $urole) {
-    try {
-        // Begin transaction
-        $this->pdo->beginTransaction();
-
-        // Prepare the base SQL query to update user info (excluding username)
-        $query = "UPDATE users SET u_fname = ?, u_lname = ?, u_email = ?, u_role_fk = ?";
-
-        // If password is provided (i.e., not empty), hash and update it
-        if (!empty($upass)) {
-            $hashedPassword = password_hash($upass, PASSWORD_DEFAULT);
-            $query .= ", u_password = ?";
-            $stmt = $this->pdo->prepare($query . " WHERE u_id = ?");
-            $stmt->execute([$ufname, $ulname, $umail, $urole, $hashedPassword, $userId]);
-        } else {
-            // If no password change, exclude the password from the query
-            $stmt = $this->pdo->prepare($query . " WHERE u_id = ?");
-            $stmt->execute([$ufname, $ulname, $umail, $urole, $userId]);
+            // Steg 3: Kolla om e-postadressen redan finns
+            $stmt = $this->pdo->prepare("SELECT * FROM users WHERE LOWER(u_email) = LOWER(?)");
+            $stmt->execute([strtolower($umail)]);
+            
+            if ($stmt->rowCount() > 0) {
+                // Om vi redigerar, måste vi kolla att det inte är VÅR EGEN e-post vi hittade
+                // Men just nu är detta block bara för "create", så vi kan returnera fel direkt.
+                if ($currentUserId === null) {
+                     return ['success' => false, 'error' => 'E-postadressen används redan.'];
+                } else {
+                     // Vid editering: kolla om IDt matchar
+                     $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
+                     if ($existingUser['u_id'] !== $currentUserId) {
+                         return ['success' => false, 'error' => 'E-postadressen används redan av en annan användare.'];
+                     }
+                }
+            }
         }
 
-        // Commit transaction
-        $this->pdo->commit();
+        // Steg 4: Validera e-postformat
+        if (!filter_var($umail, FILTER_VALIDATE_EMAIL)) {
+            return ['success' => false, 'error' => 'Ogiltigt e-postformat.'];
+        }
 
+        // Steg 5 & 6: Lösenordskollar (Görs vid "create" ELLER om man ändrar lösenord vid "edit")
+        if ($condition !== "edit" || !empty($upass)) {
+            
+            // Kolla om lösenorden matchar
+            if ($upass !== $upassrpt) {
+                return ['success' => false, 'error' => 'Lösenorden matchar inte.'];
+            }
+
+            // Validera lösenordsstyrka
+            if (strlen($upass) < 6) {
+                return ['success' => false, 'error' => 'Lösenordet måste vara minst 6 tecken långt.'];
+            }
+            if (!preg_match('/[A-Z]/', $upass)) {
+                return ['success' => false, 'error' => 'Lösenordet måste innehålla minst en stor bokstav.'];
+            }
+            if (!preg_match('/[!@#$%^&*(),.?":{}|<>]/', $upass)) {
+                return ['success' => false, 'error' => 'Lösenordet måste innehålla minst ett specialtecken.'];
+            }
+        }
+
+        // ✅ Alla kontroller godkända
         return ['success' => true];
-    } catch (Exception $e) {
-        // Rollback if something goes wrong
-        $this->pdo->rollBack();
-        return ['success' => false, 'error' => 'Database error: ' . $e->getMessage()];
     }
-}
-	
-	public function selectUserInfo($userId) {
-    try {
-        // Prepare the SQL statement
-        $stmt = $this->pdo->prepare("SELECT u_name, u_fname, u_lname, u_email, u_role_fk FROM users WHERE u_id = ?");
-        $stmt->execute([$userId]);
-
-        // Fetch user data
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($user) {
-            return ['success' => true, 'data' => $user];
-        } else {
-            return ['success' => false, 'error' => 'User not found.'];
-        }
-    } catch (Exception $e) {
-        return ['success' => false, 'error' => 'Database error: ' . $e->getMessage()];
-    }
-}
-
-public function loginUser($input, $password) {
+    
+    /**
+     * Skapar en ny användare
+     */
+    public function createUser($uname, $ufname, $ulname, $umail, $upass, $urole){
         try {
-            // ÄNDRING: Vi kollar nu om $input matchar u_email ELLER u_name
+            // Hasha lösenordet säkert
+            $hashedPassword = password_hash($upass, PASSWORD_DEFAULT);
+
+            // Starta transaktion
+            $this->pdo->beginTransaction();
+
+            // Sätt in användare i databasen (u_isactive = 1 som standard)
+            $stmt = $this->pdo->prepare("INSERT INTO users (u_name, u_fname, u_lname, u_email, u_password, u_isactive, u_role_fk, u_created) 
+                                         VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmt->execute([$uname, $ufname, $ulname, $umail, $hashedPassword, 1, $urole]);
+
+            // Bekräfta transaktion
+            $this->pdo->commit();
+
+            return ['success' => true];
+
+        } catch (Exception $e) {
+            // Ångra om något gick fel
+            $this->pdo->rollBack();
+            return ['success' => false, 'error' => 'Databasfel: ' . $e->getMessage()];
+        }
+    }
+    
+    /**
+     * Uppdaterar en befintlig användare
+     */
+    public function editUser($userId, $uname, $ufname, $ulname, $umail, $upass, $urole) {
+        try {
+            $this->pdo->beginTransaction();
+
+            // Grundfråga för uppdatering
+            $query = "UPDATE users SET u_fname = ?, u_lname = ?, u_email = ?, u_role_fk = ?";
+            $params = [$ufname, $ulname, $umail, $urole];
+
+            // Om lösenord angavs, uppdatera det också
+            if (!empty($upass)) {
+                $hashedPassword = password_hash($upass, PASSWORD_DEFAULT);
+                $query .= ", u_password = ?";
+                $params[] = $hashedPassword;
+            }
+
+            // Lägg till WHERE-villkor och kör
+            $query .= " WHERE u_id = ?";
+            $params[] = $userId;
+
+            $stmt = $this->pdo->prepare($query);
+            $stmt->execute($params);
+
+            $this->pdo->commit();
+
+            return ['success' => true];
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            return ['success' => false, 'error' => 'Databasfel: ' . $e->getMessage()];
+        }
+    }
+    
+    /**
+     * Hämtar information om en specifik användare
+     */
+    public function selectUserInfo($userId) {
+        try {
+            $stmt = $this->pdo->prepare("SELECT u_name, u_fname, u_lname, u_email, u_role_fk FROM users WHERE u_id = ?");
+            $stmt->execute([$userId]);
+
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($user) {
+                return ['success' => true, 'data' => $user];
+            } else {
+                return ['success' => false, 'error' => 'Användaren hittades inte.'];
+            }
+        } catch (Exception $e) {
+            return ['success' => false, 'error' => 'Databasfel: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * Loggar in användaren (Hanterar både E-post och Användarnamn)
+     */
+    public function loginUser($input, $password) {
+        try {
+            // Sök efter användare baserat på e-post ELLER användarnamn
             $stmt = $this->pdo->prepare("
                 SELECT users.*, roles.r_level 
                 FROM users 
@@ -151,19 +176,23 @@ public function loginUser($input, $password) {
                 WHERE users.u_email = ? OR users.u_name = ?
             ");
             
-            // Vi skickar in $input två gånger (en för email-kollen, en för namn-kollen)
             $stmt->execute([$input, $input]); 
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
+            // Verifiera lösenordet
             if ($user && password_verify($password, $user['u_password'])) {
                 
+                // Förhindra session fixation
                 session_regenerate_id(true);
+                
+                // Spara data i sessionen
                 $_SESSION['user_id'] = $user['u_id'];
                 $_SESSION['username'] = $user['u_name'];
                 $_SESSION['role_level'] = $user['r_level'];
                 $_SESSION['user_xp'] = $user['u_xp'];
                 $_SESSION['user_level'] = $user['u_level'];
                 
+                // Uppdatera datum för senaste inloggning
                 $updateStmt = $this->pdo->prepare("UPDATE users SET u_lastlogin = NOW() WHERE u_id = ?");
                 $updateStmt->execute([$user['u_id']]);
 
@@ -176,37 +205,30 @@ public function loginUser($input, $password) {
             return ['success' => false, 'error' => 'Databasfel: ' . $e->getMessage()];
         }
     }
-	
-	public function searchUsers($userName){
-		
-		try {
-        // Prepare the SQL statement
-        $stmt = $this->pdo->prepare("
-			SELECT u_name, u_fname, u_lname, u_email, r_name 
-			FROM users 
-			INNER JOIN roles 
-			ON users.u_role_fk = roles.r_id
-			WHERE u_name LIKE ?");
-		$stmt->execute(["%" . $userName . "%"]);
+    
+    /**
+     * Söker efter användare (för Admin-panelen)
+     */
+    public function searchUsers($userName){
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT u_name, u_fname, u_lname, u_email, r_name 
+                FROM users 
+                INNER JOIN roles 
+                ON users.u_role_fk = roles.r_id
+                WHERE u_name LIKE ?");
+            $stmt->execute(["%" . $userName . "%"]);
 
-        // Fetch user data
-        $userList = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $userList = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        if ($userList) {
-            return ['success' => true, 'data' => $userList];
-        } else {
-            return ['success' => false, 'error' => 'User not found.'];
+            if ($userList) {
+                return ['success' => true, 'data' => $userList];
+            } else {
+                return ['success' => false, 'error' => 'Inga användare hittades.'];
+            }
+        } catch (Exception $e) {
+            return ['success' => false, 'error' => 'Databasfel: ' . $e->getMessage()];
         }
-    } catch (Exception $e) {
-        return ['success' => false, 'error' => 'Database error: ' . $e->getMessage()];
     }
-		
-	}
-	
-	
-	/*public function displayUser() {
-        echo "Username: {$this->username}, Role: {$this->role_level}";
-		//print_r $this->pdo;
-    }*/
-	
 }
+?>

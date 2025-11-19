@@ -10,7 +10,7 @@ try {
 }
 
 $errorMsg = "";
-$successMsg = "";
+// $successMsg behövs inte längre här, vi skickar den till login.php
 
 // Hantera formuläret
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register-submit'])) {
@@ -29,19 +29,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register-submit'])) {
     $upassrpt = $_POST['upassrpt'];
     $urole = cleanInput($_POST['urole']); // ID från dropdown
 
-    // 1. Validera data (använder din metod i class_user.php)
-    // Notera: Vi skickar 'create' som condition.
+    // 1. Validera data
     $checkResult = $user_obj->checkUserRegisterInfo($uname, $umail, $upass, $upassrpt, "create");
 
     if (!$checkResult['success']) {
         $errorMsg = $checkResult['error'];
     } else {
         // 2. Skapa användaren
-        // OBS: Din createUser-metod i class_user.php måste ta emot dessa parametrar
         $createResult = $user_obj->createUser($uname, $ufname, $ulname, $umail, $upass, $urole);
 
         if ($createResult['success']) {
-            $successMsg = "Kontot är skapat! Du kan nu <a href='login.php'>logga in</a>.";
+            // NYTT: Omdirigera till login med en "flagga" för framgång
+            header("Location: login.php?signup=success");
+            exit;
         } else {
             $errorMsg = $createResult['error'];
         }
@@ -49,6 +49,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register-submit'])) {
 }
 ?>
 
+<!-- ... Resten av HTML-koden (formuläret) är oförändrad ... -->
 <div class="container mt-5 mb-5">
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6">
@@ -60,9 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register-submit'])) {
                         <div class="alert alert-danger"><?= $errorMsg ?></div>
                     <?php endif; ?>
                     
-                    <?php if ($successMsg): ?>
-                        <div class="alert alert-success"><?= $successMsg ?></div>
-                    <?php endif; ?>
+                    <!-- (SuccessMsg borttagen härifrån) -->
 
                     <form action="register.php" method="POST">
                         <?php echo csrfInput(); ?>
