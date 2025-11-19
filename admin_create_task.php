@@ -10,37 +10,37 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
 // Hämta data till dropdowns
 $types = $task_obj->getAllTypes();
 $levels = $task_obj->getAllLevels();
-$allClasses = $task_obj->getAllClasses(); // <-- NY
+$allClasses = $task_obj->getAllClasses();
+$allGenres = $task_obj->getAllGenres(); // <-- NY
 $errorMsg = "";
 $successMsg = "";
 
 // Hantera formulär-inlämning
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
     
-    // CSRF Check
     if (!verifyCsrfToken($_POST['csrf_token'])) {
         die("Ogiltig CSRF-token.");
     }
 
     $tName = cleanInput($_POST['t_name']);
-    $tType = cleanInput($_POST['t_type']); // Detta är IDt (t.ex. 1, 2, 3)
+    $tType = cleanInput($_POST['t_type']);
     $tLevel = cleanInput($_POST['t_level']);
     $tText = cleanInput($_POST['t_text']); 
     $teacherId = $_SESSION['user_id'];
     $tXp = cleanInput($_POST['t_xp']);
-    $tClass = cleanInput($_POST['t_class']); // <-- NY: Hämta klass-ID
+    
+    $tClass = cleanInput($_POST['t_class']);
+    $tClass = empty($tClass) ? null : $tClass;
 
-    // Konvertera tom sträng till NULL för databasen (om man valt "Ingen specifik klass")
-    $tClass = empty($tClass) ? null : $tClass; // <-- NY
+    $tGenre = cleanInput($_POST['t_genre']); // <-- NY
+    $tGenre = empty($tGenre) ? null : $tGenre; // <-- NY
 
     $questionsData = [];
     
-    // Hämta namnet på typen vi valde (för att veta vilken array vi ska läsa)
     $typeNameQuery = $pdo->prepare("SELECT tt_name FROM task_types WHERE tt_id = ?");
     $typeNameQuery->execute([$tType]);
     $taskTypeName = $typeNameQuery->fetchColumn();
     
-    // Packa JSON baserat på uppgiftstyp
     if (strpos(strtolower($taskTypeName), 'flerval') !== false) {
         if (isset($_POST['questions_mc'])) {
             foreach ($_POST['questions_mc'] as $q) {
@@ -59,28 +59,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
             }
         }
     }
-    // *** HÄR VAR FELET - 'SORTERING' SKA LIGGA HÄR INNANFÖR ***
     elseif (strpos(strtolower($taskTypeName), 'sortering') !== false) {
-        // 3. HANTERA SORTERING (NY)
         if (isset($_POST['questions_sort'][0]['sentences'])) {
             $sentences = trim($_POST['questions_sort'][0]['sentences']);
-            // Dela upp textarean i en array baserat på radbrytningar
             $sentencesArray = preg_split('/(\r\n|\r|\n)/', $sentences, -1, PREG_SPLIT_NO_EMPTY);
-            
-            // Rensa varje mening
             $cleanedArray = array_map('cleanInput', $sentencesArray);
-
-            // För sortering sparar vi bara en array av meningar (i rätt ordning)
-            // Vi sparar den i en 's' (sentences) nyckel
             $questionsData = ['s' => $cleanedArray];
         }
     }
-    // *** SLUT PÅ FIX ***
 
     $jsonQuestions = json_encode($questionsData, JSON_UNESCAPED_UNICODE);
 
-    // Spara via klassen - LADE TILL $tClass
-    $result = $task_obj->createTask($tName, $tType, $tLevel, $teacherId, $tClass, $tText, $jsonQuestions, $tXp);
+    // Spara via klassen - LADE TILL $tGenre
+    $result = $task_obj->createTask($tName, $tType, $tLevel, $teacherId, $tClass, $tGenre, $tText, $jsonQuestions, $tXp);
 
     if ($result['success']) {
         $successMsg = "Uppgiften skapad! <a href='admin_tasks.php'>Tillbaka till listan</a>";
@@ -113,8 +104,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                             <input type="text" name="t_name" class="form-control" required placeholder="T.ex. Verb och Substantiv">
                         </div>
                         
+                        <!-- RAD 1 -->
                         <div class="row">
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-6 mb-3">
                                 <label class="form-label">Typ av uppgift</label>
                                 <select name="t_type" id="taskTypeDropdown" class="form-select" required>
                                     <?php foreach ($types as $t): ?>
@@ -122,7 +114,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Genre (Tema)</label>
+                                <select name="t_genre" class="form-select" required>
+                                    <?php foreach ($allGenres as $g): ?>
+                                        <option value="<?= $g['g_id'] ?>"><?= $g['g_name'] ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- RAD 2 -->
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
                                 <label class="form-label">Svårighetsgrad</label>
                                 <select name="t_level" class="form-select" required>
                                     <?php foreach ($levels as $l): ?>
@@ -130,7 +134,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label class="form-label">Klass (Valfri)</label>
                                 <select name="t_class" class="form-select">
                                     <option value="">Ingen specifik klass</option>
@@ -139,11 +143,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label class="form-label">Poäng (XP)</label>
                                 <input type="number" name="t_xp" class="form-control" value="10" required>
                             </div>
                         </div>
+
                         <div class="mb-3">
                             <label class="form-label">Instruktioner / Text</label>
                             <textarea name="t_text" class="form-control" rows="3" placeholder="Förklaring till eleven..."></textarea>
@@ -151,13 +156,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                     </div>
                 </div>
 
+                <!-- FORMULÄR-DELAR (Samma som förut, bara dold/visad med JS) -->
                 <div class="card shadow-sm task-form-section" id="form-flerval">
                     <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                         <span>Frågor (Flerval)</span>
                         <button type="button" class="btn btn-sm btn-light" onclick="addQuestionField()">+ Lägg till fråga</button>
                     </div>
-                    <div class="card-body" id="questions-container">
-                        </div>
+                    <div class="card-body" id="questions-container"></div>
                 </div>
 
                 <div class="card shadow-sm task-form-section d-none" id="form-sant-falskt">
@@ -165,21 +170,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                         <span>Frågor (Sant/Falskt)</span>
                         <button type="button" class="btn btn-sm btn-light" onclick="addTrueFalseField()">+ Lägg till påstående</button>
                     </div>
-                    <div class="card-body" id="tf-questions-container">
-                        </div>
+                    <div class="card-body" id="tf-questions-container"></div>
                 </div>
 
                 <div class="card shadow-sm task-form-section d-none" id="form-sortering">
-                    <div class="card-header bg-secondary text-white">
-                        <span>Frågor (Sortering)</span>
-                    </div>
+                    <div class="card-header bg-secondary text-white"><span>Frågor (Sortering)</span></div>
                     <div class="card-body" id="sorting-questions-container">
-                        <div class="alert alert-info">
-                            Skriv meningarna i **rätt ordning**, en mening per rad. Systemet kommer automatiskt att blanda dem för eleven.
-                        </div>
+                        <div class="alert alert-info">Skriv meningarna i **rätt ordning**, en mening per rad.</div>
                         <div class="mb-2">
                             <label class="form-label fw-bold">Sorterbara meningar</label>
-                            <textarea name="questions_sort[0][sentences]" class="form-control" rows="8" placeholder="Mening 1...&#10;Mening 2...&#10;Mening 3..."></textarea>
+                            <textarea name="questions_sort[0][sentences]" class="form-control" rows="8"></textarea>
                         </div>
                     </div>
                 </div>
@@ -189,18 +189,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                 </div>
             </div>
 
+            <!-- SIDOPANEL -->
             <div class="col-md-4">
                 <div class="alert alert-info">
                     <h5><i class="bi bi-info-circle"></i> Tips</h5>
-                    <p>Välj "Ingen specifik klass" om uppgiften ska vara tillgänglig för alla elever, oavsett klass.</p>
+                    <p>Välj Genre för att kategorisera uppgiften (t.ex. Fantasy eller Sci-Fi).</p>
                 </div>
             </div>
         </div>
     </form>
 </div>
 
+<!-- JAVASCRIPT (Samma som förut) -->
 <script>
-    // --- Logik för Flervalsfrågor ---
     let questionCount = 0;
     function addQuestionField() {
         questionCount++;
@@ -213,24 +214,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                 <input type="text" name="questions_mc[${questionCount}][question]" class="form-control" required placeholder="Vad heter...?">
             </div>
             <div class="row g-2">
-                <div class="col-md-6">
-                    <input type="text" name="questions_mc[${questionCount}][correct]" class="form-control border-success" required placeholder="Rätt svar">
-                </div>
-                <div class="col-md-6">
-                    <input type="text" name="questions_mc[${questionCount}][wrong1]" class="form-control border-danger" required placeholder="Fel svar 1">
-                </div>
-                <div class="col-md-6">
-                    <input type="text" name="questions_mc[${questionCount}][wrong2]" class="form-control border-danger" placeholder="Fel svar 2 (Valfritt)">
-                </div>
-                <div class="col-md-6">
-                    <input type="text" name="questions_mc[${questionCount}][wrong3]" class="form-control border-danger" placeholder="Fel svar 3 (Valfritt)">
-                </div>
+                <div class="col-md-6"><input type="text" name="questions_mc[${questionCount}][correct]" class="form-control border-success" required placeholder="Rätt svar"></div>
+                <div class="col-md-6"><input type="text" name="questions_mc[${questionCount}][wrong1]" class="form-control border-danger" required placeholder="Fel svar 1"></div>
+                <div class="col-md-6"><input type="text" name="questions_mc[${questionCount}][wrong2]" class="form-control border-danger" placeholder="Fel svar 2"></div>
+                <div class="col-md-6"><input type="text" name="questions_mc[${questionCount}][wrong3]" class="form-control border-danger" placeholder="Fel svar 3"></div>
             </div>
         </div>`;
         container.insertAdjacentHTML('beforeend', html);
     }
 
-    // --- Logik för Sant/Falskt ---
     let tfQuestionCount = 0;
     function addTrueFalseField() {
         tfQuestionCount++;
@@ -240,7 +232,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
             <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()"></button>
             <div class="mb-2">
                 <label class="form-label fw-bold">Påstående ${tfQuestionCount}</label>
-                <input type="text" name="questions_tf[${tfQuestionCount}][question]" class="form-control" required placeholder="Påstående (t.ex. Himlen är blå)">
+                <input type="text" name="questions_tf[${tfQuestionCount}][question]" class="form-control" required placeholder="Påstående">
             </div>
             <div class="mb-2">
                 <label class="form-label">Rätt svar</label>
@@ -253,63 +245,43 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
         container.insertAdjacentHTML('beforeend', html);
     }
 
-    // --- Logik för att byta formulär (UPPDATERAD MED "DISABLED" LOGIK) ---
     const dropdown = document.getElementById('taskTypeDropdown');
     const forms = document.querySelectorAll('.task-form-section');
     
     function updateForms() {
         const selectedText = dropdown.options[dropdown.selectedIndex].text.toLowerCase();
-        
-        // 1. Dölj och INAKTIVERA alla formulär och deras fält
         forms.forEach(form => {
             form.classList.add('d-none');
             form.querySelectorAll('input, textarea, select').forEach(input => {
                 input.disabled = true;
-                input.required = false; // Ta bort required från dolda fält
+                input.required = false; 
             });
         });
-
         let activeFormId = null;
+        if (selectedText.includes('flerval')) { activeFormId = 'form-flerval'; } 
+        else if (selectedText.includes('sant/falskt')) { activeFormId = 'form-sant-falskt'; } 
+        else if (selectedText.includes('sortering')) { activeFormId = 'form-sortering'; }
 
-        // 2. Hitta rätt formulär
-        if (selectedText.includes('flerval')) {
-            activeFormId = 'form-flerval';
-        } else if (selectedText.includes('sant/falskt')) {
-            activeFormId = 'form-sant-falskt';
-        } else if (selectedText.includes('sortering')) {
-            activeFormId = 'form-sortering';
-        }
-
-        // 3. Visa och AKTIVERA det valda formuläret
         if (activeFormId) {
             const activeForm = document.getElementById(activeFormId);
             activeForm.classList.remove('d-none');
-            
-            // Aktivera alla inputs i detta formulär och återställ 'required'
             activeForm.querySelectorAll('input, textarea, select').forEach(input => {
                 input.disabled = false;
-                // Återställ 'required' för de fält som ska ha det (hårdkodat här för säkerhets skull)
-                if (input.name.includes('[question]') || input.name.includes('[correct]') || input.name.includes('[wrong1]') || input.name.includes('[sentences]')) {
+                const name = input.name;
+                if (name.includes('[question]') || name.includes('[correct]') || name.includes('[wrong1]') || name.includes('[sentences]')) {
                     input.required = true;
                 }
             });
         }
     }
     
-    // Kör funktionen när man byter i listan
     dropdown.addEventListener('change', updateForms);
-    
-    // Initiera formulär på sidladdning (Uppdaterad)
-    function initForms() {
-        updateForms(); // Kör huvudfunktionen direkt
 
-        // Lägg till ett första tomt fält (som du hade innan)
+    function initForms() {
+        updateForms(); 
         const selectedText = dropdown.options[dropdown.selectedIndex].text.toLowerCase();
-        if (selectedText.includes('flerval')) {
-            addQuestionField(); 
-        } else if (selectedText.includes('sant/falskt')) {
-            addTrueFalseField(); 
-        }
+        if (selectedText.includes('flerval')) { addQuestionField(); } 
+        else if (selectedText.includes('sant/falskt')) { addTrueFalseField(); }
     }
     
     window.onload = initForms;

@@ -1,33 +1,27 @@
 <?php
 require_once "include/header.php";
 
-// --- SÄKERHETSVAKT ---
 if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
     header("Location: login.php");
     exit;
 }
-// ---------------------
 
-// Hämta data för våra filter-dropdowns
+// Hämta data för filter
 $allTypes = $task_obj->getAllTypes();
 $allLevels = $task_obj->getAllLevels();
-// Vi behöver en lista på alla lärare också
+$allGenres = $task_obj->getAllGenres(); // <-- NY
 $stmt = $pdo->query("SELECT u_id, u_name FROM users WHERE u_role_fk >= 5 ORDER BY u_name");
 $allTeachers = $stmt->fetchAll();
 
-
-// --- NY FILTERLOGIK ---
+// --- FILTERLOGIK ---
 $currentUserId = $_SESSION['user_id'];
-
-// Läs filter från URL (GET)
-// Om inget valts (t.ex. 'all'), ska värdet vara null
 $filterTeacher = (isset($_GET['teacher']) && $_GET['teacher'] !== 'all') ? (int)$_GET['teacher'] : null;
 $filterType = (isset($_GET['type']) && $_GET['type'] !== 'all') ? (int)$_GET['type'] : null;
 $filterLevel = (isset($_GET['level']) && $_GET['level'] !== 'all') ? (int)$_GET['level'] : null;
+$filterGenre = (isset($_GET['genre']) && $_GET['genre'] !== 'all') ? (int)$_GET['genre'] : null; // <-- NY
 
-// Hämta de filtrerade uppgifterna med vår nya funktion
-$allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLevel);
-// ---------------------
+// Hämta data (med alla filter)
+$allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLevel, null, $filterGenre);
 ?>
 
 <div class="container mt-5">
@@ -38,14 +32,16 @@ $allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLeve
         </a>
     </div>
 
+    <!-- FILTERFORMULÄR -->
     <div class="card shadow-sm mb-4">
         <div class="card-body bg-light">
             <form action="admin_tasks.php" method="GET" class="row g-3 align-items-end">
+                
                 <div class="col-md-3">
                     <label for="teacher" class="form-label">Skapare</label>
                     <select name="teacher" id="teacher" class="form-select">
-                        <option value="all">Alla Uppgifter</option>
-                        <option value="<?= $currentUserId ?>" <?php echo ($filterTeacher == $currentUserId) ? 'selected' : ''; ?>>Mina uppgifter</option>
+                        <option value="all">Alla Lärare</option>
+                        <option value="<?= $currentUserId ?>" <?php echo ($filterTeacher == $currentUserId) ? 'selected' : ''; ?>>Bara Mina</option>
                         <option value="" disabled>---</option>
                         <?php foreach ($allTeachers as $teacher): ?>
                             <option value="<?= $teacher['u_id'] ?>" <?php echo ($filterTeacher == $teacher['u_id']) ? 'selected' : ''; ?>>
@@ -55,10 +51,10 @@ $allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLeve
                     </select>
                 </div>
 
-                <div class="col-md-3">
-                    <label for="type" class="form-label">Uppgiftstyp</label>
+                <div class="col-md-2">
+                    <label for="type" class="form-label">Typ</label>
                     <select name="type" id="type" class="form-select">
-                        <option value="all">Alla Typer</option>
+                        <option value="all">Alla</option>
                         <?php foreach ($allTypes as $type): ?>
                             <option value="<?= $type['tt_id'] ?>" <?php echo ($filterType == $type['tt_id']) ? 'selected' : ''; ?>>
                                 <?= htmlspecialchars($type['tt_name']) ?>
@@ -66,11 +62,24 @@ $allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLeve
                         <?php endforeach; ?>
                     </select>
                 </div>
+                
+                <!-- NYTT GENRE-FÄLT -->
+                <div class="col-md-2">
+                    <label for="genre" class="form-label">Genre</label>
+                    <select name="genre" id="genre" class="form-select">
+                        <option value="all">Alla</option>
+                        <?php foreach ($allGenres as $g): ?>
+                            <option value="<?= $g['g_id'] ?>" <?php echo ($filterGenre == $g['g_id']) ? 'selected' : ''; ?>>
+                                <?= htmlspecialchars($g['g_name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-                <div class="col-md-3">
-                    <label for="level" class="form-label">Svårighetsgrad</label>
+                <div class="col-md-2">
+                    <label for="level" class="form-label">Nivå</label>
                     <select name="level" id="level" class="form-select">
-                        <option value="all">Alla Nivåer</option>
+                        <option value="all">Alla</option>
                         <?php foreach ($allLevels as $level): ?>
                             <option value="<?= $level['tl_id'] ?>" <?php echo ($filterLevel == $level['tl_id']) ? 'selected' : ''; ?>>
                                 <?= htmlspecialchars($level['tl_name']) ?>
@@ -83,11 +92,12 @@ $allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLeve
                     <button type="submit" class="btn btn-primary w-100">Filtrera</button>
                 </div>
                 <div class="col-md-1">
-                    <a href="admin_tasks.php" class="btn btn-outline-secondary w-100" title="Återställ filter">X</a>
+                    <a href="admin_tasks.php" class="btn btn-outline-secondary w-100" title="Nollställ">X</a>
                 </div>
             </form>
         </div>
     </div>
+
     <div class="card shadow">
         <div class="card-body">
             <?php if (count($allTasks) > 0): ?>
@@ -95,20 +105,20 @@ $allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLeve
                     <table class="table table-hover align-middle">
                         <thead class="table-light">
                             <tr>
-                                <th>ID</th>
                                 <th>Titel</th>
                                 <th>Typ</th>
+                                <th>Genre</th> <!-- NY -->
                                 <th>Nivå</th>
-                                <th>Skapad av</th>
+                                <th>Skapare</th>
                                 <th>Åtgärd</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($allTasks as $task): ?>
                                 <tr>
-                                    <td><?= htmlspecialchars($task['t_id']) ?></td>
                                     <td><strong><?= htmlspecialchars($task['t_name']) ?></strong></td>
                                     <td><span class="badge bg-info text-dark"><?= htmlspecialchars($task['type_name']) ?></span></td>
+                                    <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($task['genre_name']) ?></span></td> <!-- NY -->
                                     <td><span class="badge bg-secondary"><?= htmlspecialchars($task['level_name']) ?></span></td>
                                     <td>
                                         <?= htmlspecialchars($task['teacher_name']) ?>
@@ -127,17 +137,11 @@ $allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLeve
                 </div>
             <?php else: ?>
                 <div class="text-center py-5">
-                    <p class="lead text-muted">Hittade inga uppgifter som matchade ditt filter.</p>
+                    <p class="lead text-muted">Inga uppgifter hittades med valda filter.</p>
                 </div>
             <?php endif; ?>
         </div>
     </div>
-    
-    <div class="mt-3">
-        <a href="admin_dashboard.php" class="btn btn-outline-secondary">&laquo; Tillbaka till Adminpanel</a>
-    </div>
 </div>
 
-<?php
-require_once "include/footer.php";
-?>
+<?php require_once "include/footer.php"; ?>

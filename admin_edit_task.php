@@ -7,34 +7,31 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
     exit;
 }
 
-// 1. HÄMTA UPPGIFTENS ID FRÅN URL
+// 1. HÄMTA ID
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     header("Location: admin_tasks.php");
     exit;
 }
 $taskId = $_GET['id'];
 
-// 2. HÄMTA UPPGIFTENS DATA FRÅN DATABASEN
+// 2. HÄMTA DATA
 $task = $task_obj->getTaskById($taskId);
-if (!$task) {
-    die("Hittade ingen uppgift med detta ID.");
-}
+if (!$task) { die("Hittade ingen uppgift."); }
 $questions = json_decode($task['t_questions'], true);
 $taskTypeName = strtolower($task['type_name']);
 
-// 3. HÄMTA LISTOR FÖR DROPDOWNS
+// 3. HÄMTA LISTOR
 $types = $task_obj->getAllTypes();
 $levels = $task_obj->getAllLevels();
 $allClasses = $task_obj->getAllClasses();
+$allGenres = $task_obj->getAllGenres(); // <-- NY
 $errorMsg = "";
 $successMsg = "";
 
-// 4. HANTERA FORMULÄR-INLÄMNING (NÄR MAN SPARAR ÄNDRINGAR)
+// 4. HANTERA SPARA
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
     
-    if (!verifyCsrfToken($_POST['csrf_token'])) {
-        die("Ogiltig CSRF-token.");
-    }
+    if (!verifyCsrfToken($_POST['csrf_token'])) { die("Ogiltig CSRF-token."); }
 
     $tName = cleanInput($_POST['t_name']);
     $tType = cleanInput($_POST['t_type']); 
@@ -44,13 +41,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
     $tClass = cleanInput($_POST['t_class']); 
     $tClass = empty($tClass) ? null : $tClass;
 
+    $tGenre = cleanInput($_POST['t_genre']); // <-- NY
+    $tGenre = empty($tGenre) ? null : $tGenre; // <-- NY
+
     $questionsData = [];
-    
     $typeNameQuery = $pdo->prepare("SELECT tt_name FROM task_types WHERE tt_id = ?");
     $typeNameQuery->execute([$tType]);
     $postedTaskTypeName = strtolower($typeNameQuery->fetchColumn());
 
-    // Packa om JSON baserat på vilken typ som skickades
     if (strpos($postedTaskTypeName, 'flerval') !== false) {
         if (isset($_POST['questions_mc'])) {
             foreach ($_POST['questions_mc'] as $q) {
@@ -74,18 +72,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
             $sentences = trim($_POST['questions_sort'][0]['sentences']);
             $sentencesArray = preg_split('/(\r\n|\r|\n)/', $sentences, -1, PREG_SPLIT_NO_EMPTY);
             $cleanedArray = array_map('cleanInput', $sentencesArray);
-            $questionsData = ['s' => $cleanedArray]; // Spara som 's' (sentences)
+            $questionsData = ['s' => $cleanedArray];
         }
     }
 
     $jsonQuestions = json_encode($questionsData, JSON_UNESCAPED_UNICODE);
 
-    // Använd den uppdaterade updateTask-metoden
-    $result = $task_obj->updateTask($taskId, $tName, $tType, $tLevel, $tClass, $tText, $jsonQuestions, $tXp);
+    // LADE TILL $tGenre
+    $result = $task_obj->updateTask($taskId, $tName, $tType, $tLevel, $tClass, $tGenre, $tText, $jsonQuestions, $tXp);
 
     if ($result['success']) {
         $successMsg = "Uppgiften har uppdaterats! <a href='admin_tasks.php'>Tillbaka till listan</a>";
-        // Ladda om datan så att formuläret visar de nya ändringarna
         $task = $task_obj->getTaskById($taskId);
         $questions = json_decode($task['t_questions'], true);
         $taskTypeName = strtolower($task['type_name']);
@@ -98,12 +95,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
 <div class="container mt-5 mb-5">
     <h1>Redigera uppgift: <?php echo htmlspecialchars($task['t_name']); ?></h1>
     
-    <?php if ($errorMsg): ?>
-        <div class="alert alert-danger"><?= $errorMsg ?></div>
-    <?php endif; ?>
-    <?php if ($successMsg): ?>
-        <div class="alert alert-success"><?= $successMsg ?></div>
-    <?php endif; ?>
+    <?php if ($errorMsg): ?> <div class="alert alert-danger"><?= $errorMsg ?></div> <?php endif; ?>
+    <?php if ($successMsg): ?> <div class="alert alert-success"><?= $successMsg ?></div> <?php endif; ?>
 
     <form action="" method="POST" id="taskForm">
         <?= csrfInput() ?>
@@ -119,7 +112,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
                         </div>
                         
                         <div class="row">
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-6 mb-3">
                                 <label class="form-label">Typ av uppgift</label>
                                 <select name="t_type" id="taskTypeDropdown" class="form-select" required>
                                     <?php foreach ($types as $t): ?>
@@ -129,7 +122,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Genre</label>
+                                <select name="t_genre" class="form-select" required>
+                                    <?php foreach ($allGenres as $g): ?>
+                                        <option value="<?= $g['g_id'] ?>" <?php echo ($g['g_id'] == $task['t_genre_fk']) ? 'selected' : ''; ?>>
+                                            <?= $g['g_name'] ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                         <div class="row">
+                            <div class="col-md-4 mb-3">
                                 <label class="form-label">Svårighetsgrad</label>
                                 <select name="t_level" class="form-select" required>
                                     <?php foreach ($levels as $l): ?>
@@ -139,7 +145,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label class="form-label">Klass (Valfri)</label>
                                 <select name="t_class" class="form-select">
                                     <option value="">Ingen specifik klass</option>
@@ -150,7 +156,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label class="form-label">Poäng (XP)</label>
                                 <input type="number" name="t_xp" class="form-control" value="<?= htmlspecialchars($task['t_xp']) ?>" required>
                             </div>
@@ -163,13 +169,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
                     </div>
                 </div>
 
-                <div class="card shadow-sm task-form-section d-none" id="form-flerval">
+                <!-- FORMULÄR-DELAR (SAMMA SOM FÖRUT) -->
+                <div class="card shadow-sm task-form-section" id="form-flerval">
                     <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                         <span>Frågor (Flerval)</span>
                         <button type="button" class="btn btn-sm btn-light" onclick="addQuestionField()">+ Lägg till fråga</button>
                     </div>
-                    <div class="card-body" id="questions-container">
-                        </div>
+                    <div class="card-body" id="questions-container"></div>
                 </div>
 
                 <div class="card shadow-sm task-form-section d-none" id="form-sant-falskt">
@@ -177,18 +183,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
                         <span>Frågor (Sant/Falskt)</span>
                         <button type="button" class="btn btn-sm btn-light" onclick="addTrueFalseField()">+ Lägg till påstående</button>
                     </div>
-                    <div class="card-body" id="tf-questions-container">
-                        </div>
+                    <div class="card-body" id="tf-questions-container"></div>
                 </div>
 
                 <div class="card shadow-sm task-form-section d-none" id="form-sortering">
-                    <div class="card-header bg-secondary text-white">
-                        <span>Frågor (Sortering)</span>
-                    </div>
+                    <div class="card-header bg-secondary text-white"><span>Frågor (Sortering)</span></div>
                     <div class="card-body" id="sorting-questions-container">
-                        <div class="alert alert-info">
-                            Skriv meningarna i **rätt ordning**, en mening per rad.
-                        </div>
+                        <div class="alert alert-info">Skriv meningarna i **rätt ordning**, en mening per rad.</div>
                         <div class="mb-2">
                             <label class="form-label fw-bold">Sorterbara meningar</label>
                             <textarea name="questions_sort[0][sentences]" class="form-control" rows="8"></textarea>
@@ -204,30 +205,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
             <div class="col-md-4">
                 <div class="alert alert-info">
                     <h5><i class="bi bi-info-circle"></i> Redigeringsläge</h5>
-                    <p>Du redigerar nu en befintlig uppgift. Ändringar du sparar kommer att slå igenom omedelbart.</p>
+                    <p>Du redigerar nu en befintlig uppgift.</p>
                 </div>
                 <div class="d-grid gap-2">
-                    <a href="admin_tasks.php" class="btn btn-outline-secondary">&laquo; Avbryt och gå tillbaka</a>
+                    <a href="admin_tasks.php" class="btn btn-outline-secondary">&laquo; Avbryt</a>
                 </div>
             </div>
         </div>
     </form>
 </div>
 
+<!-- JAVASCRIPT (SAMMA SOM CREATE, PLUS FYLLA I DATA) -->
 <script>
-    // 1. DATA FRÅN PHP
     const existingQuestions = <?php echo json_encode($questions); ?>;
     const taskType = "<?php echo $taskTypeName; ?>";
 
-    // 2. LOGIK FÖR FLERVALSFRÅGOR
     let questionCount = 0;
     function addQuestionField(data = null) {
         questionCount++;
         const container = document.getElementById('questions-container');
-        
         const q = data ? data.q : '';
         const a = data ? data.a : '';
-        const w1 = data ? (data.w1 || '') : '';
+        const w1 = data ? data.w1 : '';
         const w2 = data ? (data.w2 || '') : '';
         const w3 = data ? (data.w3 || '') : '';
         
@@ -239,29 +238,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
                 <input type="text" name="questions_mc[${questionCount}][question]" class="form-control" required value="${q}">
             </div>
             <div class="row g-2">
-                <div class="col-md-6">
-                    <input type="text" name="questions_mc[${questionCount}][correct]" class="form-control border-success" required value="${a}" placeholder="Rätt svar">
-                </div>
-                <div class="col-md-6">
-                    <input type="text" name="questions_mc[${questionCount}][wrong1]" class="form-control border-danger" required value="${w1}" placeholder="Fel svar 1">
-                </div>
-                <div class="col-md-6">
-                    <input type="text" name="questions_mc[${questionCount}][wrong2]" class="form-control border-danger" value="${w2}" placeholder="Fel svar 2 (Valfritt)">
-                </div>
-                <div class="col-md-6">
-                    <input type="text" name="questions_mc[${questionCount}][wrong3]" class="form-control border-danger" value="${w3}" placeholder="Fel svar 3 (Valfritt)">
-                </div>
+                <div class="col-md-6"><input type="text" name="questions_mc[${questionCount}][correct]" class="form-control border-success" required value="${a}" placeholder="Rätt svar"></div>
+                <div class="col-md-6"><input type="text" name="questions_mc[${questionCount}][wrong1]" class="form-control border-danger" required value="${w1}" placeholder="Fel svar 1"></div>
+                <div class="col-md-6"><input type="text" name="questions_mc[${questionCount}][wrong2]" class="form-control border-danger" value="${w2}" placeholder="Fel svar 2"></div>
+                <div class="col-md-6"><input type="text" name="questions_mc[${questionCount}][wrong3]" class="form-control border-danger" value="${w3}" placeholder="Fel svar 3"></div>
             </div>
         </div>`;
         container.insertAdjacentHTML('beforeend', html);
     }
 
-    // 3. LOGIK FÖR SANT/FALSKT
     let tfQuestionCount = 0;
     function addTrueFalseField(data = null) {
         tfQuestionCount++;
         const container = document.getElementById('tf-questions-container');
-        
         const q = data ? data.q : '';
         const a = data ? data.a : 'Sant'; 
         
@@ -270,7 +259,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
             <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()"></button>
             <div class="mb-2">
                 <label class="form-label fw-bold">Påstående ${tfQuestionCount}</label>
-                <input type="text" name="questions_tf[${tfQuestionCount}][question]" class="form-control" required value="${q}" placeholder="Påstående (t.ex. Himlen är blå)">
+                <input type="text" name="questions_tf[${tfQuestionCount}][question]" class="form-control" required value="${q}">
             </div>
             <div class="mb-2">
                 <label class="form-label">Rätt svar</label>
@@ -283,24 +272,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
         container.insertAdjacentHTML('beforeend', html);
     }
 
-    // 4. LOGIK FÖR SORTERING
     function addSortingField(data = null) {
         const container = document.getElementById('sorting-questions-container');
-        // 's' är en array av meningar. Vi gör om den till en sträng med radbrytningar.
         const sentences = (data && data.s) ? data.s.join('\n') : '';
-        
         const textarea = container.querySelector('textarea[name="questions_sort[0][sentences]"]');
         textarea.value = sentences;
     }
 
-
-    // 5. LOGIK FÖR ATT BYTA FORMULÄR (MED "DISABLED" FIX)
     const dropdown = document.getElementById('taskTypeDropdown');
     const forms = document.querySelectorAll('.task-form-section');
     
     function updateForms() {
         const selectedText = dropdown.options[dropdown.selectedIndex].text.toLowerCase();
-        
         forms.forEach(form => {
             form.classList.add('d-none');
             form.querySelectorAll('input, textarea, select').forEach(input => {
@@ -308,24 +291,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
                 input.required = false; 
             });
         });
-
         let activeFormId = null;
-
-        if (selectedText.includes('flerval')) {
-            activeFormId = 'form-flerval';
-        } else if (selectedText.includes('sant/falskt')) {
-            activeFormId = 'form-sant-falskt';
-        } else if (selectedText.includes('sortering')) {
-            activeFormId = 'form-sortering';
-        }
+        if (selectedText.includes('flerval')) { activeFormId = 'form-flerval'; } 
+        else if (selectedText.includes('sant/falskt')) { activeFormId = 'form-sant-falskt'; } 
+        else if (selectedText.includes('sortering')) { activeFormId = 'form-sortering'; }
 
         if (activeFormId) {
             const activeForm = document.getElementById(activeFormId);
             activeForm.classList.remove('d-none');
-            
             activeForm.querySelectorAll('input, textarea, select').forEach(input => {
                 input.disabled = false;
-                // Återställ 'required'
                 const name = input.name;
                 if (name.includes('[question]') || name.includes('[correct]') || name.includes('[wrong1]') || name.includes('[sentences]')) {
                     input.required = true;
@@ -336,26 +311,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
     
     dropdown.addEventListener('change', updateForms);
 
-    // 6. INITIERING (LADDA BEFINTLIGA FRÅGOR)
     window.onload = function() {
-        // Kör updateForms() FÖRST för att ställa in rätt synlighet och 'disabled' status
         updateForms(); 
-
-        // Fyll sedan PÅ det aktiva formuläret med data
         if (taskType.includes('flerval')) {
-            if (existingQuestions && existingQuestions.length > 0) {
-                existingQuestions.forEach(q => addQuestionField(q));
-            } else {
-                addQuestionField(); 
-            }
+            if (existingQuestions && existingQuestions.length > 0) { existingQuestions.forEach(q => addQuestionField(q)); } else { addQuestionField(); }
         } else if (taskType.includes('sant/falskt')) {
-            if (existingQuestions && existingQuestions.length > 0) {
-                existingQuestions.forEach(q => addTrueFalseField(q));
-            } else {
-                addTrueFalseField();
-            }
+            if (existingQuestions && existingQuestions.length > 0) { existingQuestions.forEach(q => addTrueFalseField(q)); } else { addTrueFalseField(); }
         } else if (taskType.includes('sortering')) {
-            // 'existingQuestions' kommer vara t.ex. {'s': ['mening 1', 'mening 2']}
             addSortingField(existingQuestions);
         }
     };

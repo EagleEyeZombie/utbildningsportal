@@ -8,7 +8,19 @@ class Task {
     }
 
     /**
-     * NY: Hämtar alla klasser (för dropdowns)
+     * NY: Hämtar alla genrer
+     */
+    public function getAllGenres() {
+        try {
+            $stmt = $this->pdo->query("SELECT * FROM genres ORDER BY g_name ASC");
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Hämtar alla klasser
      */
     public function getAllClasses() {
         try {
@@ -20,7 +32,7 @@ class Task {
     }
 
     /**
-     * NY: Hämtar alla uppgiftstyper (för dropdowns)
+     * Hämtar alla uppgiftstyper
      */
     public function getAllTypes() {
         try {
@@ -32,7 +44,7 @@ class Task {
     }
 
     /**
-     * NY: Hämtar alla nivåer (för dropdowns)
+     * Hämtar alla nivåer
      */
     public function getAllLevels() {
         try {
@@ -44,15 +56,16 @@ class Task {
     }
 
     /**
-     * UPPDATERAD: Tar nu emot $classId och $t_xp
+     * UPPDATERAD: Tar nu emot $genreId
      */
-    public function createTask($name, $typeId, $levelId, $teacherId, $classId, $text, $questionsJson, $t_xp) {
+    public function createTask($name, $typeId, $levelId, $teacherId, $classId, $genreId, $text, $questionsJson, $t_xp) {
         try {
-            $sql = "INSERT INTO tasks (t_name, t_type_fk, t_level_fk, t_teacher_fk, t_class_fk, t_text, t_questions, t_xp) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            // Lade till t_genre_fk
+            $sql = "INSERT INTO tasks (t_name, t_type_fk, t_level_fk, t_teacher_fk, t_class_fk, t_genre_fk, t_text, t_questions, t_xp) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $this->pdo->prepare($sql);
             
-            if ($stmt->execute([$name, $typeId, $levelId, $teacherId, $classId, $text, $questionsJson, $t_xp])) {
+            if ($stmt->execute([$name, $typeId, $levelId, $teacherId, $classId, $genreId, $text, $questionsJson, $t_xp])) {
                 return ['success' => true];
             } else {
                 return ['success' => false, 'error' => 'Kunde inte spara uppgiften.'];
@@ -63,15 +76,17 @@ class Task {
     }
 
     /**
-     * UPPDATERAD: Tar nu emot $classId och $t_xp
+     * UPPDATERAD: Tar nu emot $genreId
      */
-    public function updateTask($taskId, $name, $typeId, $levelId, $classId, $text, $questionsJson, $t_xp) {
+    public function updateTask($taskId, $name, $typeId, $levelId, $classId, $genreId, $text, $questionsJson, $t_xp) {
         try {
+            // Lade till t_genre_fk
             $sql = "UPDATE tasks SET 
                         t_name = ?, 
                         t_type_fk = ?, 
                         t_level_fk = ?, 
                         t_class_fk = ?, 
+                        t_genre_fk = ?, 
                         t_text = ?, 
                         t_questions = ?, 
                         t_xp = ? 
@@ -79,7 +94,7 @@ class Task {
             
             $stmt = $this->pdo->prepare($sql);
             
-            if ($stmt->execute([$name, $typeId, $levelId, $classId, $text, $questionsJson, $t_xp, $taskId])) {
+            if ($stmt->execute([$name, $typeId, $levelId, $classId, $genreId, $text, $questionsJson, $t_xp, $taskId])) {
                 return ['success' => true];
             } else {
                 return ['success' => false, 'error' => 'Kunde inte uppdatera uppgiften.'];
@@ -89,9 +104,6 @@ class Task {
         }
     }
 
-    /**
-     * NY: Tar bort en uppgift
-     */
     public function deleteTask($taskId) {
         try {
             $sql = "DELETE FROM tasks WHERE t_id = ?";
@@ -107,9 +119,8 @@ class Task {
         }
     }
 
-    
     /**
-     * UPPDATERAD: Hämtar nu även class_name
+     * UPPDATERAD: Hämtar nu även genre_name
      */
     public function getAllTasks() {
         try {
@@ -117,12 +128,14 @@ class Task {
                            users.u_name AS teacher_name, 
                            task_types.tt_name AS type_name, 
                            task_levels.tl_name AS level_name,
-                           classes.c_name AS class_name
+                           classes.c_name AS class_name,
+                           genres.g_name AS genre_name
                     FROM tasks
                     LEFT JOIN users ON tasks.t_teacher_fk = users.u_id
                     LEFT JOIN task_types ON tasks.t_type_fk = task_types.tt_id
                     LEFT JOIN task_levels ON tasks.t_level_fk = task_levels.tl_id
                     LEFT JOIN classes ON tasks.t_class_fk = classes.c_id
+                    LEFT JOIN genres ON tasks.t_genre_fk = genres.g_id
                     ORDER BY tasks.t_id DESC";
             
             $stmt = $this->pdo->prepare($sql);
@@ -134,7 +147,7 @@ class Task {
     }
     
     /**
-     * UPPDATERAD: Hämtar nu även class_name
+     * UPPDATERAD: Hämtar nu även genre_name
      */
     public function getTaskById($id) {
         try {
@@ -142,12 +155,14 @@ class Task {
                            users.u_name AS teacher_name, 
                            task_types.tt_name AS type_name, 
                            task_levels.tl_name AS level_name,
-                           classes.c_name AS class_name
+                           classes.c_name AS class_name,
+                           genres.g_name AS genre_name
                     FROM tasks
                     LEFT JOIN users ON tasks.t_teacher_fk = users.u_id
                     LEFT JOIN task_types ON tasks.t_type_fk = task_types.tt_id
                     LEFT JOIN task_levels ON tasks.t_level_fk = task_levels.tl_id
                     LEFT JOIN classes ON tasks.t_class_fk = classes.c_id
+                    LEFT JOIN genres ON tasks.t_genre_fk = genres.g_id
                     WHERE tasks.t_id = ?";
             
             $stmt = $this->pdo->prepare($sql);
@@ -159,30 +174,7 @@ class Task {
     }
 
     /**
-     * Spara eller uppdatera ett resultat för en elev
-     */
-    public function saveTaskResult($studentId, $taskId, $score, $completed) {
-        try {
-            $stmt = $this->pdo->prepare("SELECT st_id FROM student_tasks WHERE st_s_id_fk = ? AND st_t_id_fk = ?");
-            $stmt->execute([$studentId, $taskId]);
-            $existing = $stmt->fetch();
-
-            if ($existing) {
-                $sql = "UPDATE student_tasks SET st_score = ?, st_completed = ? WHERE st_id = ?";
-                $updateStmt = $this->pdo->prepare($sql);
-                return $updateStmt->execute([$score, $completed, $existing['st_id']]);
-            } else {
-                $sql = "INSERT INTO student_tasks (st_s_id_fk, st_t_id_fk, st_score, st_completed) VALUES (?, ?, ?, ?)";
-                $insertStmt = $this->pdo->prepare($sql);
-                return $insertStmt->execute([$studentId, $taskId, $score, $completed]);
-            }
-        } catch (PDOException $e) {
-            return false;
-        }
-    }
-
-    /**
-     * UPPDATERAD: Hämtar nu även class_name
+     * UPPDATERAD: Hämtar nu även genre_name
      */
     public function getTasksForStudent($studentId, $typeId = null) {
         try {
@@ -192,13 +184,15 @@ class Task {
                            task_levels.tl_name AS level_name,
                            student_tasks.st_score,
                            student_tasks.st_completed,
-                           classes.c_name AS class_name
+                           classes.c_name AS class_name,
+                           genres.g_name AS genre_name
                     FROM tasks
                     LEFT JOIN users ON tasks.t_teacher_fk = users.u_id
                     LEFT JOIN task_types ON tasks.t_type_fk = task_types.tt_id
                     LEFT JOIN task_levels ON tasks.t_level_fk = task_levels.tl_id
                     LEFT JOIN student_tasks ON tasks.t_id = student_tasks.st_t_id_fk AND student_tasks.st_s_id_fk = ?
                     LEFT JOIN classes ON tasks.t_class_fk = classes.c_id
+                    LEFT JOIN genres ON tasks.t_genre_fk = genres.g_id
                     ";
             
             $params = [$studentId]; 
@@ -219,47 +213,64 @@ class Task {
         }
     }
 
-    /**
-     * NY: Hämtar alla uppgifter skapade av en specifik lärare
-     */
-    public function getTasksByTeacher($teacherId) {
+    public function saveTaskResult($studentId, $taskId, $score, $completed) {
+         try {
+            $stmt = $this->pdo->prepare("SELECT st_id FROM student_tasks WHERE st_s_id_fk = ? AND st_t_id_fk = ?");
+            $stmt->execute([$studentId, $taskId]);
+            $existing = $stmt->fetch();
+
+            if ($existing) {
+                $sql = "UPDATE student_tasks SET st_score = ?, st_completed = ? WHERE st_id = ?";
+                $updateStmt = $this->pdo->prepare($sql);
+                return $updateStmt->execute([$score, $completed, $existing['st_id']]);
+            } else {
+                $sql = "INSERT INTO student_tasks (st_s_id_fk, st_t_id_fk, st_score, st_completed) VALUES (?, ?, ?, ?)";
+                $insertStmt = $this->pdo->prepare($sql);
+                return $insertStmt->execute([$studentId, $taskId, $score, $completed]);
+            }
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    public function getUnlockedLevel($studentId, $typeId) {
         try {
-            $sql = "SELECT tasks.*, 
-                           users.u_name AS teacher_name, 
-                           task_types.tt_name AS type_name, 
-                           task_levels.tl_name AS level_name,
-                           classes.c_name AS class_name
-                    FROM tasks
-                    LEFT JOIN users ON tasks.t_teacher_fk = users.u_id
-                    LEFT JOIN task_types ON tasks.t_type_fk = task_types.tt_id
-                    LEFT JOIN task_levels ON tasks.t_level_fk = task_levels.tl_id
-                    LEFT JOIN classes ON tasks.t_class_fk = classes.c_id
-                    WHERE tasks.t_teacher_fk = ?
-                    ORDER BY tasks.t_id DESC";
+            $sql = "SELECT MAX(task_levels.tl_level) 
+                    FROM student_tasks 
+                    JOIN tasks ON student_tasks.st_t_id_fk = tasks.t_id
+                    JOIN task_levels ON tasks.t_level_fk = task_levels.tl_id
+                    WHERE student_tasks.st_s_id_fk = ? 
+                    AND tasks.t_type_fk = ?
+                    AND student_tasks.st_completed = 1";
             
             $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([$teacherId]);
-            return $stmt->fetchAll();
+            $stmt->execute([$studentId, $typeId]);
+            $maxLevel = $stmt->fetchColumn();
+
+            return ($maxLevel) ? $maxLevel + 1 : 1;
+
         } catch (PDOException $e) {
-            return [];
+            return 1; 
         }
     }
 
     /**
-     * UPPDATERAD: Kan nu även filtrera på $classId
+     * UPPDATERAD: Kan nu filtrera på $genreId
      */
-    public function getTasksFiltered($teacherId = null, $typeId = null, $levelId = null, $classId = null) {
+    public function getTasksFiltered($teacherId = null, $typeId = null, $levelId = null, $classId = null, $genreId = null) {
         try {
             $sql = "SELECT tasks.*, 
                            users.u_name AS teacher_name, 
                            task_types.tt_name AS type_name, 
                            task_levels.tl_name AS level_name,
-                           classes.c_name AS class_name
+                           classes.c_name AS class_name,
+                           genres.g_name AS genre_name
                     FROM tasks
                     LEFT JOIN users ON tasks.t_teacher_fk = users.u_id
                     LEFT JOIN task_types ON tasks.t_type_fk = task_types.tt_id
                     LEFT JOIN task_levels ON tasks.t_level_fk = task_levels.tl_id
                     LEFT JOIN classes ON tasks.t_class_fk = classes.c_id
+                    LEFT JOIN genres ON tasks.t_genre_fk = genres.g_id
                     ";
             
             $whereConditions = [];
@@ -280,6 +291,11 @@ class Task {
             if ($classId !== null) {
                 $whereConditions[] = "tasks.t_class_fk = ?";
                 $params[] = $classId;
+            }
+            // NY: Genre Filter
+            if ($genreId !== null) {
+                $whereConditions[] = "tasks.t_genre_fk = ?";
+                $params[] = $genreId;
             }
 
             if (count($whereConditions) > 0) {
