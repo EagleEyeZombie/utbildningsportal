@@ -174,7 +174,8 @@ class Task {
 
     // --- PROGRESSION & RESULTAT ---
 
-    public function getUnlockedLevel($studentId, $typeId) {
+    // UPPDATERAD: Nu tar den även emot genreId!
+    public function getUnlockedLevel($studentId, $typeId, $genreId = null) {
         try {
             $sql = "SELECT MAX(task_levels.tl_level) 
                     FROM student_tasks 
@@ -183,8 +184,17 @@ class Task {
                     WHERE student_tasks.st_s_id_fk = ? 
                     AND tasks.t_type_fk = ?
                     AND student_tasks.st_completed = 1";
+            
+            $params = [$studentId, $typeId];
+
+            // NYTT: Filtrera på genre också om det finns
+            if ($genreId !== null) {
+                $sql .= " AND tasks.t_genre_fk = ?";
+                $params[] = $genreId;
+            }
+            
             $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([$studentId, $typeId]);
+            $stmt->execute($params);
             $maxLevel = $stmt->fetchColumn();
             return ($maxLevel) ? $maxLevel + 1 : 1;
         } catch (PDOException $e) { return 1; }
@@ -213,7 +223,6 @@ class Task {
 
     public function checkAchievements($studentId, $currentXp) {
         try {
-            // 1. Hämta badges som eleven KAN få men INTE har än
             $sql = "SELECT * FROM achievements 
                     WHERE a_xp_required <= ? 
                     AND a_id NOT IN (
@@ -222,8 +231,6 @@ class Task {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$currentXp, $studentId]);
             $newBadges = $stmt->fetchAll();
-
-            // 2. Dela ut dem
             if ($newBadges) {
                 foreach ($newBadges as $badge) {
                     $insert = $this->pdo->prepare("INSERT INTO student_achievements (sa_student_fk, sa_achievement_fk) VALUES (?, ?)");

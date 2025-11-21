@@ -2,12 +2,10 @@
 require_once "include/header.php";
 
 // --- SÄKERHETSVAKT ---
-// 1. Är man inloggad?
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
-// 2. Är man Elev? (Admin ska inte vara här)
 if ($_SESSION['role_level'] >= 5) {
     header("Location: admin_dashboard.php");
     exit;
@@ -17,21 +15,34 @@ if ($_SESSION['role_level'] >= 5) {
 // --- FILTERLOGIK ---
 $studentId = $_SESSION['user_id'];
 
-// Hämta filter från URL, sätt till null om de inte finns
+// Hämta filter från URL
 $filterTypeId = isset($_GET['type']) && $_GET['type'] !== '' ? (int)$_GET['type'] : null;
 $filterGenreId = isset($_GET['genre']) && $_GET['genre'] !== '' ? (int)$_GET['genre'] : null;
+$viewAllLevels = isset($_GET['view']) && $_GET['view'] === 'all';
+
+// Kolla om vi har något filter aktivt
+$hasActiveFilter = ($filterTypeId !== null || $filterGenreId !== null);
+
+// VIKTIGT: Vi visar listan om man valt ett filter ELLER om man klickat "Visa allt!"
+$shouldShowTasks = ($hasActiveFilter || $viewAllLevels);
 
 // Hämta listor för att bygga knapparna
 $allTypes = $task_obj->getAllTypes();
 $allGenres = $task_obj->getAllGenres();
 
-// Hämta uppgifter baserat på filtren
-// Funktionen getTasksForStudent hanterar nu både typeId och genreId
-$allTasks = $task_obj->getTasksForStudent($studentId, $filterTypeId, $filterGenreId);
+// Hämta uppgifter
+$allTasks = [];
+if ($shouldShowTasks) {
+    $allTasks = $task_obj->getTasksForStudent($studentId, $filterTypeId, $filterGenreId);
+}
 
-// NYTT: Hämta badges för att visa dem
+// Hämta badges för att visa dem (HÄR VAR FELET - NU TILLBAKA)
 $myBadges = $task_obj->getStudentBadges($studentId);
-// ---------------------
+
+// Hjälpfunktion för att bygga länkar
+function buildUrl($params) {
+    return 'dashboard.php?' . http_build_query(array_merge($_GET, $params));
+}
 ?>
 
 <div class="container mt-5">
@@ -70,12 +81,11 @@ $myBadges = $task_obj->getStudentBadges($studentId);
         </div>
     </div>
 
-    <!-- BADGES (UPPDATERAD DESIGN) -->
+    <!-- BADGES (NU TILLBAKA!) -->
     <?php if (!empty($myBadges)): ?>
     <div class="row justify-content-center mb-5">
         <div class="col-md-12">
             <div class="card text-center shadow-sm">
-                <!-- ÄNDRAT: Tog bort 'bg-warning text-dark' så den får standardtemat (Guld) -->
                 <div class="card-header">Dina Utmärkelser</div>
                 <div class="card-body p-4">
                     <div class="d-flex flex-wrap justify-content-center gap-3">
@@ -94,24 +104,38 @@ $myBadges = $task_obj->getStudentBadges($studentId);
 
     <h3 class="mb-4 text-center text-white" style="text-shadow: 2px 2px 4px #000;">Välj Ditt Äventyr</h3>
 
-    <!-- FILTERSEKTION (NY DESIGN MED STEN-KNAPPAR) -->
+    <!-- FILTERSEKTION -->
     <div class="filter-section text-center">
         
-        <!-- Knapp för att nollställa allt -->
-        <div class="mb-4">
-            <a href="dashboard.php" class="btn btn-filter <?php echo ($filterTypeId === null && $filterGenreId === null) ? 'btn-filter-active' : ''; ?>">
-                <i class="bi bi-globe"></i> Visa Allt
+        <!-- TOPPKNAPPAR (Rensa & Visa Allt) -->
+        <div class="mb-4 d-flex justify-content-center flex-wrap gap-3">
+            
+            <!-- 1. Rensa val! -->
+            <a href="dashboard.php" class="btn btn-filter <?php echo (!$hasActiveFilter && !$viewAllLevels) ? 'btn-filter-active' : ''; ?>">
+                <i class="bi bi-x-circle"></i> Rensa val!
             </a>
+
+            <!-- 2. Visa allt! (Guldig knapp) -->
+            <?php if ($viewAllLevels): ?>
+                <a href="<?= buildUrl(['view' => 'focus']) ?>" class="btn btn-filter" style="border-color: #fff;">
+                    <i class="bi bi-eye-slash"></i> Dölj låsta
+                </a>
+            <?php else: ?>
+                <!-- Guld-styling direkt här för att den ska sticka ut -->
+                <a href="<?= buildUrl(['view' => 'all']) ?>" class="btn btn-filter" style="background-color: var(--accent-gold); color: #2c2c2c; border-color: #fff; box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);">
+                    <i class="bi bi-eye"></i> Visa allt!
+                </a>
+            <?php endif; ?>
+
         </div>
 
         <div class="row justify-content-center">
-            <!-- Uppgiftstyper (Flerval, Sortering etc) -->
+            <!-- Uppgiftstyper -->
             <div class="col-md-5 mb-3">
                 <span class="filter-label">Välj Spelsätt</span>
                 <div class="d-flex flex-wrap justify-content-center">
                     <?php foreach ($allTypes as $type): ?>
-                        <!-- Vi behåller genre-filtret i länken om det redan är valt -->
-                        <a href="dashboard.php?type=<?= $type['tt_id'] ?><?= $filterGenreId ? '&genre='.$filterGenreId : '' ?>" 
+                        <a href="<?= buildUrl(['type' => $type['tt_id']]) ?>" 
                            class="btn btn-filter <?php echo ($filterTypeId === $type['tt_id']) ? 'btn-filter-active' : ''; ?>">
                             <?= htmlspecialchars($type['tt_name']) ?>
                         </a>
@@ -119,13 +143,12 @@ $myBadges = $task_obj->getStudentBadges($studentId);
                 </div>
             </div>
 
-            <!-- Genrer (Fantasy, Sci-Fi etc) -->
+            <!-- Genrer -->
             <div class="col-md-5 mb-3">
                 <span class="filter-label">Välj Tema</span>
                 <div class="d-flex flex-wrap justify-content-center">
                     <?php foreach ($allGenres as $genre): ?>
-                        <!-- Vi behåller typ-filtret i länken om det redan är valt -->
-                        <a href="dashboard.php?genre=<?= $genre['g_id'] ?><?= $filterTypeId ? '&type='.$filterTypeId : '' ?>" 
+                        <a href="<?= buildUrl(['genre' => $genre['g_id']]) ?>" 
                            class="btn btn-filter <?php echo ($filterGenreId === $genre['g_id']) ? 'btn-filter-active' : ''; ?>">
                             <?= htmlspecialchars($genre['g_name']) ?>
                         </a>
@@ -137,51 +160,54 @@ $myBadges = $task_obj->getStudentBadges($studentId);
     <!-- SLUT FILTERSEKTION -->
 
     <!-- UPPGIFTSLISTA -->
-    <div class="row">
-        <?php if (count($allTasks) > 0): ?>
-            <?php foreach ($allTasks as $task): ?>
+    <?php if ($shouldShowTasks): ?>
+        
+        <div class="row">
+            <?php if (count($allTasks) > 0): ?>
                 <?php 
+                $visibleCount = 0;
+                foreach ($allTasks as $task): 
                     // --- PROGRESSIONSLOGIK ---
-                    // Vi räknar ut olåst nivå för just DENNA uppgiftstyp
-                    // Detta gör att "Nivå 2 Flerval" kan vara låst även om man klarat "Nivå 10 Sortering"
-                    $unlockedLevelForThisType = $task_obj->getUnlockedLevel($_SESSION['user_id'], $task['t_type_fk']);
+                    $currentGenreId = $filterGenreId ?? $task['t_genre_fk'];
+                    $unlockedLevelForThisType = $task_obj->getUnlockedLevel($_SESSION['user_id'], $task['t_type_fk'], $currentGenreId);
                     
-                    // Om uppgiftens nivå är högre än vad eleven låst upp -> LÅST
                     $isLocked = ($task['tl_level'] > $unlockedLevelForThisType);
+                    $isCompleted = ($task['st_completed'] == 1);
+                    
+                    // VIKTIGT: Om inte "Visa Alla", dölj låsta OCH klara uppgifter
+                    if (!$viewAllLevels) {
+                        if ($isLocked) continue;
+                        if ($isCompleted) continue;
+                    }
+                    $visibleCount++;
                 ?>
 
                 <div class="col-md-4 mb-4">
-                    <!-- Lägg till stil för låsta kort (gråa och genomskinliga) -->
-                    <div class="card shadow-sm h-100 <?php echo ($task['st_completed'] == 1) ? 'border-success' : 'border-0'; ?>"
+                    <div class="card shadow-sm h-100 <?php echo ($isCompleted) ? 'border-success' : 'border-0'; ?>"
                          style="<?php echo $isLocked ? 'opacity: 0.7; filter: grayscale(100%);' : ''; ?>">
                         
                         <div class="card-header bg-white border-bottom-0 pt-3">
-                            <!-- Badges för Nivå och Typ -->
                             <div class="badge-container">
                                 <span class="badge bg-primary badge-info-pill">Nivå <?= htmlspecialchars($task['level_name']) ?></span>
                                 <span class="badge bg-secondary badge-info-pill"><?= htmlspecialchars($task['type_name']) ?></span>
                             </div>
                             
-                            <!-- Badge för Genre (Om den finns) -->
                             <?php if (!empty($task['genre_name'])): ?>
                             <div class="text-center mb-2">
                                 <span class="badge bg-light text-dark border"><?= htmlspecialchars($task['genre_name']) ?></span>
                             </div>
                             <?php endif; ?>
                             
-                            <!-- Resultat Badge (Om klarad eller försökt) -->
-                            <?php if (isset($task['st_completed'])): ?>
-                                <?php if ($task['st_completed'] == 1): ?>
-                                    <span class="badge bg-success badge-result">
-                                        <i class="bi bi-check-lg"></i> KLARAD
-                                        <span class="percent"><?= $task['st_score'] ?>% RÄTT</span>
-                                    </span>
-                                <?php elseif ($task['st_score'] !== null): ?>
-                                    <span class="badge bg-warning text-dark badge-result">
-                                        FÖRSÖK IGEN
-                                        <span class="percent"><?= $task['st_score'] ?>% RÄTT</span>
-                                    </span>
-                                <?php endif; ?>
+                            <?php if ($isCompleted): ?>
+                                <span class="badge bg-success badge-result">
+                                    <i class="bi bi-check-lg"></i> KLARAD
+                                    <span class="percent"><?= $task['st_score'] ?>% RÄTT</span>
+                                </span>
+                            <?php elseif (isset($task['st_score']) && $task['st_score'] !== null): ?>
+                                <span class="badge bg-warning text-dark badge-result">
+                                    FÖRSÖK IGEN
+                                    <span class="percent"><?= $task['st_score'] ?>% RÄTT</span>
+                                </span>
                             <?php endif; ?>
                         </div>
 
@@ -208,8 +234,8 @@ $myBadges = $task_obj->getStudentBadges($studentId);
                                 <?php if ($isLocked): ?>
                                     <button class="btn btn-secondary disabled">Låst <i class="bi bi-lock"></i></button>
                                 <?php else: ?>
-                                    <a href="task_view.php?id=<?= $task['t_id'] ?>" class="btn <?php echo ($task['st_completed'] == 1) ? 'btn-outline-success' : 'btn-outline-primary'; ?>">
-                                        <?php echo ($task['st_completed'] == 1) ? 'Förbättra resultat' : 'Starta Äventyret'; ?> <i class="bi bi-arrow-right"></i>
+                                    <a href="task_view.php?id=<?= $task['t_id'] ?>" class="btn <?php echo ($isCompleted) ? 'btn-outline-success' : 'btn-outline-primary'; ?>">
+                                        <?php echo ($isCompleted) ? 'Förbättra resultat' : 'Starta Äventyret'; ?> <i class="bi bi-arrow-right"></i>
                                     </a>
                                 <?php endif; ?>
                             </div>
@@ -217,16 +243,39 @@ $myBadges = $task_obj->getStudentBadges($studentId);
 
                     </div>
                 </div>
-            <?php endforeach; ?>
-        <?php else: ?>
+                <?php endforeach; ?>
+                
+                <?php if ($visibleCount == 0): ?>
+                     <div class="col-12">
+                        <div class="alert alert-success text-center" style="background-color: rgba(40, 167, 69, 0.8); color: white; border: 2px solid white;">
+                            <h4>Wow! Du har klarat allt här!</h4>
+                            <p>Du har inga nya uppgifter i den här kategorin just nu. Klicka på "Visa allt!" för att se dina prestationer.</p>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+            <?php else: ?>
+                <div class="col-12">
+                    <div class="alert alert-info" style="background-color: rgba(80, 88, 100, 0.9); border: 2px solid var(--border-thick); color: white;">
+                        <h4>Inga äventyr hittades!</h4>
+                        <p>Det finns inga uppgifter som matchar din filtrering just nu.</p>
+                    </div>
+                </div>
+            <?php endif; ?>
+    </div>
+
+    <?php else: ?>
+        <!-- OM INGET FILTER ÄR VALT (Startsidan för dashboard) -->
+        <div class="row">
             <div class="col-12">
-                <div class="alert alert-info" style="background-color: rgba(80, 88, 100, 0.9); border: 2px solid var(--border-thick); color: white;">
-                    <h4>Inga äventyr hittades!</h4>
-                    <p>Det finns inga uppgifter som matchar din filtrering just nu. Prova att välja "Visa Allt" eller en annan kategori.</p>
+                <div class="p-5 rounded-3 text-center" style="background: rgba(0,0,0,0.3); border: 2px dashed var(--accent-gold);">
+                    <h2 style="color: var(--accent-gold); font-family: 'Cinzel Decorative';">Välj din väg!</h2>
+                    <p class="lead text-white">Klicka på en knapp ovan (Spelsätt eller Tema) för att se dina uppdrag.</p>
+                    <i class="bi bi-arrow-up-circle display-3 text-white"></i>
                 </div>
             </div>
-        <?php endif; ?>
-    </div>
+        </div>
+    <?php endif; ?>
 </div>
 
 <?php require_once "include/footer.php"; ?>
