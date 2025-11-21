@@ -1,5 +1,5 @@
 <?php
-require_once "include/header.php"; // Laddar config, funktioner, klasser och $pdo
+require_once "include/header.php";
 
 // --- SÄKERHETSVAKT ---
 if (!isset($_SESSION['user_id'])) {
@@ -19,11 +19,8 @@ $taskId = $_POST['task_id'];
 $userAnswers = isset($_POST['answers']) ? $_POST['answers'] : [];
 $userId = $_SESSION['user_id'];
 
-// Hämta facit
 $task = $task_obj->getTaskById($taskId);
-if (!$task) {
-    die("Uppgiften hittades inte.");
-}
+if (!$task) { die("Uppgiften hittades inte."); }
 
 $questions = json_decode($task['t_questions'], true);
 $taskTypeName = strtolower($task['type_name']);
@@ -31,77 +28,81 @@ $correctCount = 0;
 $totalQuestions = 0;
 
 // --- RÄTTNING ---
-// **************************************************
-// NY LOGIK: Rätta baserat på uppgiftstyp
-// **************************************************
-
 if (strpos($taskTypeName, 'sortering') !== false) {
-    // --- 3. RÄTTA SORTERING (NY) ---
-    $correctOrder = $questions['s']; // Facit (t.ex. [A, B, C])
-    $studentOrder = $userAnswers; // Elevens svar (t.ex. [A, C, B])
-    
-    $totalQuestions = count($correctOrder); // Antal meningar att rätta
-    
-    // Rätta genom att jämföra arrayerna plats för plats
+    // Sortering
+    $correctOrder = $questions['s'];
+    $totalQuestions = count($correctOrder);
     for ($i = 0; $i < $totalQuestions; $i++) {
-        // Trimma för säkerhets skull
         $correctSentence = trim($correctOrder[$i]);
-        $studentSentence = isset($studentOrder[$i]) ? trim($studentOrder[$i]) : '';
-        
-        if ($correctSentence === $studentSentence) {
-            $correctCount++;
-        }
+        $studentSentence = isset($userAnswers[$i]) ? trim($userAnswers[$i]) : '';
+        if ($correctSentence === $studentSentence) { $correctCount++; }
     }
-    
 } else {
-    // --- 1. & 2. RÄTTA FLERVAL ELLER SANT/FALSKT ---
+    // Flerval och Sant/Falskt
     $totalQuestions = count($questions);
-    
     foreach ($questions as $index => $q) {
         $questionKey = $index + 1; 
-        
         if (isset($userAnswers[$questionKey])) {
             $userAnswer = trim($userAnswers[$questionKey]);
-            
             if (strpos($taskTypeName, 'flerval') !== false) {
-                // RÄTTA FLERVAL
-                $correctAnswer = trim($q['a']); 
-                if ($userAnswer === $correctAnswer) {
-                    $correctCount++;
-                }
+                $correctAnswer = trim($q['a']);
+                if ($userAnswer === $correctAnswer) { $correctCount++; }
             } 
             elseif (strpos($taskTypeName, 'sant/falskt') !== false) {
-                // RÄTTA SANT/FALSKT
                 $correctAnswer = "";
-                if (isset($q['a'])) {
-                    $correctAnswer = trim($q['a']); 
-                } elseif (isset($q['correct'])) {
-                    $correctAnswer = $q['correct'] ? "Sant" : "Falskt";
-                }
-
-                if ($userAnswer === $correctAnswer) {
-                    $correctCount++;
-                }
+                if (isset($q['a'])) { $correctAnswer = trim($q['a']); } 
+                elseif (isset($q['correct'])) { $correctAnswer = $q['correct'] ? "Sant" : "Falskt"; }
+                if ($userAnswer === $correctAnswer) { $correctCount++; }
             }
         }
     }
-} // Slut på Rättnings-logiken
+}
 
 // --- RESULTATBERÄKNING ---
 $scorePercent = ($totalQuestions > 0) ? round(($correctCount / $totalQuestions) * 100) : 0;
 $passed = ($scorePercent >= 70) ? 1 : 0;
 
-// --- DATABASUPPDATERING (XP & RESULTAT) ---
+$newBadges = [];
+$nextTaskId = null;
+
 if ($passed) {
     $taskXp = $task['t_xp'];
     $updateXpSql = "UPDATE users SET u_xp = u_xp + ? WHERE u_id = ?";
     $stmt = $pdo->prepare($updateXpSql);
     $stmt->execute([$taskXp, $userId]);
+    
     $_SESSION['user_xp'] = (isset($_SESSION['user_xp']) ? $_SESSION['user_xp'] : 0) + $taskXp;
+    
+    $newLevel = floor($_SESSION['user_xp'] / 100) + 1;
+    if ($newLevel > $_SESSION['user_level']) {
+        $updateLevelSql = "UPDATE users SET u_level = ? WHERE u_id = ?";
+        $stmt = $pdo->prepare($updateLevelSql);
+        $stmt->execute([$newLevel, $userId]);
+        $_SESSION['user_level'] = $newLevel;
+    }
+
+    // Kolla Achievements
+    $newBadges = $task_obj->checkAchievements($userId, $_SESSION['user_xp']);
+
+    // Hitta nästa uppgift i sagan (nästa nivå för samma typ och genre)
+    // Vi letar efter en uppgift med samma typ, samma genre, men nivå + 1
+    $currentLevel = $task['tl_level'];
+    $nextLevel = $currentLevel + 1;
+    
+    $stmtNext = $pdo->prepare("SELECT t_id FROM tasks 
+                               JOIN task_levels ON tasks.t_level_fk = task_levels.tl_id 
+                               WHERE t_type_fk = ? AND t_genre_fk = ? AND task_levels.tl_level = ? 
+                               LIMIT 1");
+    $stmtNext->execute([$task['t_type_fk'], $task['t_genre_fk'], $nextLevel]);
+    $nextTask = $stmtNext->fetch(PDO::FETCH_ASSOC);
+    if ($nextTask) {
+        $nextTaskId = $nextTask['t_id'];
+    }
 }
 
 // Spara resultatet
 $saved = $task_obj->saveTaskResult($userId, $taskId, $scorePercent, $passed);
+
 ?>
 
 <div class="container mt-5">
@@ -112,6 +113,27 @@ $saved = $task_obj->saveTaskResult($userId, $taskId, $scorePercent, $passed);
                     <?php if ($passed): ?>
                         <i class="bi bi-trophy-fill text-warning display-1"></i>
                         <h2 class="mt-3 text-success">Bra jobbat!</h2>
+                        
+                        <?php if (isset($newLevel) && $newLevel > ($oldLevel ?? 0)): ?>
+                            <div class="alert alert-info mt-3">
+                                <h4><i class="bi bi-arrow-up-circle"></i> LEVEL UP!</h4>
+                                <p>Du har nått nivå <?= $newLevel ?>!</p>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($newBadges)): ?>
+                            <div class="mt-3 p-3 bg-light border rounded">
+                                <h5 class="text-dark">Du har låst upp nya utmärkelser!</h5>
+                                <div class="d-flex justify-content-center gap-2 mt-2">
+                                    <?php foreach ($newBadges as $badge): ?>
+                                        <div class="badge bg-warning text-dark p-2 fs-6">
+                                            <i class="bi <?= $badge['a_icon'] ?>"></i> <?= $badge['a_name'] ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
                     <?php else: ?>
                         <i class="bi bi-emoji-frown text-secondary display-1"></i>
                         <h2 class="mt-3 text-danger">Försök igen!</h2>
@@ -121,13 +143,12 @@ $saved = $task_obj->saveTaskResult($userId, $taskId, $scorePercent, $passed);
                 <div class="card-body p-4">
                     <h4 class="mb-3">Du fick <?= $scorePercent ?>% rätt</h4>
                     <p class="lead">
-                        Du svarade rätt på <strong><?= $correctCount ?></strong> av <strong><?= $totalQuestions ?></strong> 
-                        <?php echo (strpos($taskTypeName, 'sortering') !== false) ? 'meningar' : 'frågor'; ?>.
+                        Du svarade rätt på <strong><?= $correctCount ?></strong> av <strong><?= $totalQuestions ?></strong>.
                     </p>
 
                     <?php if ($passed): ?>
                         <div class="alert alert-success">
-                            <p class="mb-0">Du har klarat uppgiften och fått <strong><?= $taskXp ?> XP</strong>! Resultatet är sparat.</p>
+                            <p class="mb-0">Du har klarat uppgiften och fått <strong><?= $taskXp ?> XP</strong>!</p>
                         </div>
                     <?php else: ?>
                         <div class="alert alert-warning">
@@ -136,7 +157,14 @@ $saved = $task_obj->saveTaskResult($userId, $taskId, $scorePercent, $passed);
                     <?php endif; ?>
                     
                     <div class="d-grid gap-2 mt-4">
-                        <a href="dashboard.php" class="btn btn-primary btn-lg">Tillbaka till Dashboard</a>
+                        <?php if ($passed && $nextTaskId): ?>
+                            <!-- KNAPP FÖR NÄSTA KAPITEL -->
+                            <a href="task_view.php?id=<?= $nextTaskId ?>" class="btn btn-success btn-lg">
+                                Fortsätt äventyret <i class="bi bi-arrow-right-circle"></i>
+                            </a>
+                        <?php endif; ?>
+                        
+                        <a href="dashboard.php" class="btn btn-primary">Tillbaka till Dashboard</a>
                         <a href="task_view.php?id=<?= $taskId ?>" class="btn btn-outline-secondary">Gör om uppgiften</a>
                     </div>
                 </div>

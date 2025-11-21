@@ -28,6 +28,9 @@ $allGenres = $task_obj->getAllGenres();
 // Hämta uppgifter baserat på filtren
 // Funktionen getTasksForStudent hanterar nu både typeId och genreId
 $allTasks = $task_obj->getTasksForStudent($studentId, $filterTypeId, $filterGenreId);
+
+// NYTT: Hämta badges för att visa dem
+$myBadges = $task_obj->getStudentBadges($studentId);
 // ---------------------
 ?>
 
@@ -66,6 +69,28 @@ $allTasks = $task_obj->getTasksForStudent($studentId, $filterTypeId, $filterGenr
             </div>
         </div>
     </div>
+
+    <!-- BADGES (UPPDATERAD DESIGN) -->
+    <?php if (!empty($myBadges)): ?>
+    <div class="row justify-content-center mb-5">
+        <div class="col-md-12">
+            <div class="card text-center shadow-sm">
+                <!-- ÄNDRAT: Tog bort 'bg-warning text-dark' så den får standardtemat (Guld) -->
+                <div class="card-header">Dina Utmärkelser</div>
+                <div class="card-body p-4">
+                    <div class="d-flex flex-wrap justify-content-center gap-3">
+                        <?php foreach ($myBadges as $badge): ?>
+                            <div class="badge-item p-2 text-center">
+                                <i class="bi <?= htmlspecialchars($badge['a_icon']) ?> display-4 text-warning" style="text-shadow: 1px 1px 2px #000;"></i>
+                                <div class="mt-1 fw-bold text-white"><?= htmlspecialchars($badge['a_name']) ?></div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <h3 class="mb-4 text-center text-white" style="text-shadow: 2px 2px 4px #000;">Välj Ditt Äventyr</h3>
 
@@ -204,6 +229,4 @@ $allTasks = $task_obj->getTasksForStudent($studentId, $filterTypeId, $filterGenr
     </div>
 </div>
 
-<?php
-require_once "include/footer.php";
-?>
+<?php require_once "include/footer.php"; ?>
