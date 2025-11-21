@@ -16,8 +16,9 @@ if (!$task) {
 }
 
 $questions = json_decode($task['t_questions'], true);
-$totalSteps = count($questions) + 1; // +1 för texten
+// För Sortering har vi bara 1 "fråga" (listan), så totala steg är 2 (Text + Sortering)
 $taskTypeName = strtolower($task['type_name']); 
+$totalSteps = (strpos($taskTypeName, 'sortering') !== false) ? 2 : count($questions) + 1; 
 ?>
 
 <div class="container mt-5 mb-5">
@@ -32,6 +33,7 @@ $taskTypeName = strtolower($task['type_name']);
                 <input type="hidden" name="task_id" value="<?= $task['t_id'] ?>">
                 <?= csrfInput() ?>
 
+                <!-- STEG 1: LÄSTEXTEN -->
                 <div class="step-card" id="step-0">
                     <div class="card shadow-sm border-0">
                         <div class="card-body p-5">
@@ -42,24 +44,26 @@ $taskTypeName = strtolower($task['type_name']);
                                 <p class="lead" style="white-space: pre-wrap;"><?= htmlspecialchars($task['t_text']) ?></p>
                             </div>
 
-                            <div class="d-grid">
+                            <div class="d-grid gap-3">
                                 <button type="button" class="btn btn-primary btn-lg" onclick="nextStep()">
                                     Jag har läst texten och är redo <i class="bi bi-arrow-right"></i>
                                 </button>
+                                
+                                <!-- NY KNAPP: GÅ TILLBAKA -->
+                                <a href="dashboard.php" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-lg"></i> Jag är inte redo (Gå tillbaka)
+                                </a>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- STEG 2: FRÅGORNA (Dynamisk visning) -->
                 <?php 
                 $qCount = 0;
-                // Notera: För Sortering är $questions = ['s' => [...]]
-                // För Flerval/SantFalskt är $questions = [ 0 => [...], 1 => [...] ]
-                // Vi måste hantera Sortering annorlunda.
                 
                 if (strpos($taskTypeName, 'sortering') !== false) {
-                    // *** 3. VISA SORTERINGSUPPGIFT (NY) ***
-                    // Vi har bara en fråga (en lista att sortera)
+                    // *** VISA SORTERINGSUPPGIFT ***
                     $qCount++;
                     $correctOrder = $questions['s']; // Hämta facit
                     $shuffledOrder = $correctOrder; // Kopiera facit
@@ -68,15 +72,18 @@ $taskTypeName = strtolower($task['type_name']);
                     <div class="step-card d-none" id="step-<?= $qCount ?>">
                         <div class="card shadow border-0">
                             <div class="card-header bg-primary text-white py-3">
-                                <h4 class="m-0">Sorteringsövning (1 av 1)</h4>
+                                <h4 class="m-0">Sorteringsövning</h4>
                             </div>
                             <div class="card-body p-4">
                                 <h5 class="mb-4">Instruktion: Dra och släpp meningarna så de hamnar i rätt händelseordning.</h5>
                                 
+                                <!-- Drag-and-Drop Listan -->
                                 <div id="sortable-list" class="list-group mb-4">
                                     <?php foreach ($shuffledOrder as $index => $sentence): ?>
                                         <div class="list-group-item list-group-item-action p-3 border rounded mb-2 sortable-item">
-                                            <i class="bi bi-grip-vertical me-2"></i> <span><?= htmlspecialchars($sentence) ?></span>
+                                            <i class="bi bi-grip-vertical me-2"></i> <!-- Handtag -->
+                                            <span><?= htmlspecialchars($sentence) ?></span>
+                                            <!-- Vi gömmer det sorterade värdet i ett dolt fält -->
                                             <input type="hidden" name="answers[<?= $index ?>]" value="<?= htmlspecialchars($sentence) ?>">
                                         </div>
                                     <?php endforeach; ?>
@@ -91,7 +98,7 @@ $taskTypeName = strtolower($task['type_name']);
                     </div>
                     <?php
                 } else {
-                    // *** 1. & 2. VISA FLERVAL ELLER SANT/FALSKT ***
+                    // *** VISA FLERVAL ELLER SANT/FALSKT ***
                     foreach ($questions as $index => $q): 
                         $qCount++;
                     ?>
@@ -102,8 +109,14 @@ $taskTypeName = strtolower($task['type_name']);
                                 </div>
                                 <div class="card-body p-4">
                                     
+                                    <?php 
+                                        // Hämta frågetext (hanterar både 'q' och 'statement')
+                                        $questionText = isset($q['q']) ? $q['q'] : (isset($q['statement']) ? $q['statement'] : 'Fråga saknas');
+                                    ?>
+
                                     <?php if (strpos($taskTypeName, 'flerval') !== false): ?>
-                                        <h5 class="mb-4"><?= htmlspecialchars($q['q']) ?></h5>
+                                        <!-- FLERVAL -->
+                                        <h5 class="mb-4"><?= htmlspecialchars($questionText) ?></h5>
                                         <div class="list-group mb-4">
                                             <?php
                                             $options = [];
@@ -122,8 +135,10 @@ $taskTypeName = strtolower($task['type_name']);
                                         </div>
 
                                     <?php elseif (strpos($taskTypeName, 'sant/falskt') !== false): ?>
+                                        <!-- SANT/FALSKT -->
                                         <h5 class="mb-4">Påstående:</h5>
-                                        <p class="lead mb-4 p-3 bg-light border rounded"><?= htmlspecialchars($q['q']) ?></p>
+                                        <!-- Använd bg-light-fixen vi gjorde i CSS -->
+                                        <p class="lead mb-4 p-3 bg-light border rounded"><?= htmlspecialchars($questionText) ?></p>
                                         <div class="list-group mb-4">
                                             <label class="list-group-item list-group-item-action p-3 border rounded mb-2">
                                                 <input class="form-check-input me-2" type="radio" name="answers[<?= $qCount ?>]" value="Sant" required onclick="enableNextBtn(<?= $qCount ?>)">
@@ -148,7 +163,7 @@ $taskTypeName = strtolower($task['type_name']);
                             </div>
                         </div>
                     <?php endforeach; 
-                } // Slut på else
+                } 
                 ?>
 
             </form>
@@ -156,10 +171,10 @@ $taskTypeName = strtolower($task['type_name']);
     </div>
 </div>
 
+<!-- JAVASCRIPT -->
 <script>
     let currentStep = 0;
-    // totalSteps är nu lite annorlunda för Sortering
-    const totalSteps = <?= (strpos($taskTypeName, 'sortering') !== false) ? 2 : $totalSteps ?>; 
+    const totalSteps = <?= $totalSteps ?>; 
     const taskType = "<?= $taskTypeName ?>";
 
     function updateProgress() {
@@ -205,30 +220,26 @@ $taskTypeName = strtolower($task['type_name']);
         }
     }
 
-    // Initiera
     updateProgress();
 
-    // --- NY LOGIK FÖR DRAG-AND-DROP ---
     if (taskType.includes('sortering')) {
         const list = document.getElementById('sortable-list');
-        Sortable.create(list, {
-            animation: 150, // Animationstid
-            ghostClass: 'sortable-ghost', // CSS-klass för "skuggan"
-            onEnd: function (evt) {
-                // När man släpper, uppdatera de dolda input-fälten
-                const items = list.querySelectorAll('.sortable-item');
-                items.forEach((item, index) => {
-                    // Hitta det dolda fältet inuti
-                    const input = item.querySelector('input[type="hidden"]');
-                    input.name = `answers[${index}]`; // Uppdatera index (0, 1, 2...)
-                });
-            }
-        });
-
-        // CSS-fix för drag-handtaget
-        document.querySelectorAll('.sortable-item').forEach(item => {
-            item.style.cursor = 'grab';
-        });
+        if(list) {
+            Sortable.create(list, {
+                animation: 150, 
+                ghostClass: 'sortable-ghost', 
+                onEnd: function (evt) {
+                    const items = list.querySelectorAll('.sortable-item');
+                    items.forEach((item, index) => {
+                        const input = item.querySelector('input[type="hidden"]');
+                        input.name = `answers[${index}]`; 
+                    });
+                }
+            });
+            document.querySelectorAll('.sortable-item').forEach(item => {
+                item.style.cursor = 'grab';
+            });
+        }
     }
 </script>
 

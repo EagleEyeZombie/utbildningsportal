@@ -27,11 +27,9 @@ if (isset($_SESSION['user_id'])) {
             
             <div class="d-flex justify-content-center gap-3 mt-5">
                 <a href="login.php" class="btn btn-primary btn-lg px-5 py-3" style="font-size: 1.5rem; border-width: 3px;">
-                    Logga In
+                    Logga In för att börja
                 </a>
-                <a href="register.php" class="btn btn-success btn-lg px-5 py-3" style="font-size: 1.5rem; border-width: 3px;">
-                    Börja Nu
-                </a>
+                <!-- "Börja Nu"-knappen är borttagen -->
             </div>
         </div>
     </div>

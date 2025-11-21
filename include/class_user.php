@@ -13,13 +13,13 @@ class User {
     }
     
     /**
-     * Validerar registreringsdata (Nu på SVENSKA!)
-     * Returnerar en array med 'success' (true/false) och felmeddelande.
+     * Validerar registrerings- och uppdateringsdata.
+     * Returnerar en array med 'success' (true/false) och ev. 'error' (meddelande på svenska).
      */
     public function checkUserRegisterInfo($uname, $umail, $upass, $upassrpt, $condition, $currentUserId = null) {
         
-        // Steg 1-3 gäller främst vid skapande (create) eller om man byter namn/email
-        if ($condition === "create") {   
+        // Steg 1-3 gäller främst vid skapande (create) eller om man byter namn/email vid edit
+        if ($condition === "create" || $condition === "edit") {   
             
             // Steg 1: Validera användarnamnets längd
             if (strlen($uname) < 3 || strlen($uname) > 20) {
@@ -27,27 +27,27 @@ class User {
             }
 
             // Steg 2: Kolla om användarnamnet redan är upptaget
-            $stmt = $this->pdo->prepare("SELECT * FROM users WHERE LOWER(u_name) = LOWER(?)");
-            $stmt->execute([strtolower($uname)]);
-            if ($stmt->rowCount() > 0) {
-                return ['success' => false, 'error' => 'Användarnamnet är upptaget.'];
+            // (Vi kollar detta främst vid 'create'. Vid 'edit' brukar man inte byta användarnamn, men om man gör det bör man kolla här)
+            if ($condition === "create") {
+                $stmt = $this->pdo->prepare("SELECT u_id FROM users WHERE LOWER(u_name) = LOWER(?)");
+                $stmt->execute([strtolower($uname)]);
+                if ($stmt->rowCount() > 0) {
+                    return ['success' => false, 'error' => 'Användarnamnet är redan upptaget.'];
+                }
             }
 
             // Steg 3: Kolla om e-postadressen redan finns
-            $stmt = $this->pdo->prepare("SELECT * FROM users WHERE LOWER(u_email) = LOWER(?)");
+            $stmt = $this->pdo->prepare("SELECT u_id FROM users WHERE LOWER(u_email) = LOWER(?)");
             $stmt->execute([strtolower($umail)]);
             
+            // Om vi hittar e-posten i databasen...
             if ($stmt->rowCount() > 0) {
-                // Om vi redigerar, måste vi kolla att det inte är VÅR EGEN e-post vi hittade
-                // Men just nu är detta block bara för "create", så vi kan returnera fel direkt.
-                if ($currentUserId === null) {
-                     return ['success' => false, 'error' => 'E-postadressen används redan.'];
-                } else {
-                     // Vid editering: kolla om IDt matchar
-                     $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
-                     if ($existingUser['u_id'] !== $currentUserId) {
-                         return ['success' => false, 'error' => 'E-postadressen används redan av en annan användare.'];
-                     }
+                $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                // Om vi skapar ny (create): Det är alltid fel om mailen finns.
+                // Om vi redigerar (edit): Det är bara fel om mailen tillhör NÅGON ANNAN än oss själva.
+                if ($condition === "create" || ($currentUserId !== null && $existingUser['u_id'] != $currentUserId)) {
+                    return ['success' => false, 'error' => 'E-postadressen används redan.'];
                 }
             }
         }
@@ -57,7 +57,7 @@ class User {
             return ['success' => false, 'error' => 'Ogiltigt e-postformat.'];
         }
 
-        // Steg 5 & 6: Lösenordskollar (Görs vid "create" ELLER om man ändrar lösenord vid "edit")
+        // Steg 5 & 6: Lösenordskollar (Görs vid "create" ELLER om man fyllt i lösenordsfältet vid "edit")
         if ($condition !== "edit" || !empty($upass)) {
             
             // Kolla om lösenorden matchar
@@ -82,7 +82,7 @@ class User {
     }
     
     /**
-     * Skapar en ny användare
+     * Skapar en ny användare i databasen.
      */
     public function createUser($uname, $ufname, $ulname, $umail, $upass, $urole){
         try {
@@ -110,7 +110,7 @@ class User {
     }
     
     /**
-     * Uppdaterar en befintlig användare
+     * Uppdaterar en befintlig användare.
      */
     public function editUser($userId, $uname, $ufname, $ulname, $umail, $upass, $urole) {
         try {
@@ -144,7 +144,7 @@ class User {
     }
     
     /**
-     * Hämtar information om en specifik användare
+     * Hämtar information om en specifik användare.
      */
     public function selectUserInfo($userId) {
         try {
@@ -164,7 +164,8 @@ class User {
     }
 
     /**
-     * Loggar in användaren (Hanterar både E-post och Användarnamn)
+     * Loggar in användaren.
+     * Hanterar inloggning via både e-post och användarnamn.
      */
     public function loginUser($input, $password) {
         try {
@@ -207,7 +208,7 @@ class User {
     }
     
     /**
-     * Söker efter användare (för Admin-panelen)
+     * Söker efter användare (för Admin-panelen - Enkel sökning).
      */
     public function searchUsers($userName){
         try {
@@ -228,6 +229,66 @@ class User {
             }
         } catch (Exception $e) {
             return ['success' => false, 'error' => 'Databasfel: ' . $e->getMessage()];
+        }
+    }
+
+    // --- METODER FÖR PAGINERING & SORTERING (Admin) ---
+
+    /**
+     * Hämtar en sida med användare, sorterad och begränsad.
+     */
+    public function getUsersPaginated($limit, $offset, $sortColumn = 'u_name', $sortOrder = 'ASC') {
+        try {
+            // Tillåtna kolumner för sortering (Säkerhetsåtgärd mot SQL-injection)
+            $allowedColumns = ['u_name', 'u_fname', 'u_lname', 'u_email', 'r_name'];
+            if (!in_array($sortColumn, $allowedColumns)) {
+                $sortColumn = 'u_name';
+            }
+            $sortOrder = strtoupper($sortOrder) === 'DESC' ? 'DESC' : 'ASC';
+
+            $sql = "SELECT users.u_id, users.u_name, users.u_fname, users.u_lname, users.u_email, roles.r_name 
+                    FROM users 
+                    INNER JOIN roles ON users.u_role_fk = roles.r_id 
+                    ORDER BY $sortColumn $sortOrder 
+                    LIMIT :limit OFFSET :offset";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Räknar totalt antal användare (för paginering).
+     */
+    public function getTotalUsers() {
+        try {
+            $stmt = $this->pdo->query("SELECT COUNT(*) FROM users");
+            return $stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+
+    // --- NY METOD FÖR REGISTER.PHP ---
+    // ÄNDRAT: Standardgräns ökad till 20
+    public function getRecentUsers($limit = 20) {
+        try {
+            $sql = "SELECT u_name, u_fname, u_lname, u_email, r_name, u_created 
+                    FROM users 
+                    INNER JOIN roles ON users.u_role_fk = roles.r_id
+                    ORDER BY u_id DESC 
+                    LIMIT :limit";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return [];
         }
     }
 }

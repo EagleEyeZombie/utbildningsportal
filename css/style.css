@@ -267,6 +267,21 @@ body {
   color: #2c2c2c;
 }
 
+/* "Jag är inte redo" / Sekundär knapp */
+.btn-outline-secondary {
+  color: #ffffff !important; /* Kritvit text */
+  border-color: #cccccc;
+  background-color: rgba(255, 255, 255, 0.15); /* Ljusare bakgrund */
+  border-width: 2px;
+  font-weight: 700;
+  text-shadow: 1px 1px 2px #000;
+}
+.btn-outline-secondary:hover {
+  background-color: #cccccc;
+  color: #000 !important;
+  text-shadow: none;
+}
+
 /* Fix för Nivå och Typ badges */
 .badge-info-pill {
   display: flex; /* ÄNDRAT: Från inline-block till flex */
@@ -554,4 +569,31 @@ body.admin-mode .alert-info {
   font-size: 1.2rem;
   padding: 15px 40px;
   border-width: 3px;
+}
+
+/* Fix för text i Admin-kort (som register.php) */
+/* Om vi inte är i admin-mode (dvs vi har bakgrundsbild), gör texten vit */
+body:not(.admin-mode) .card {
+  color: var(--text-white);
+}
+
+body:not(.admin-mode) .card-header {
+  color: var(--accent-gold);
+}
+
+body:not(.admin-mode) .table {
+  color: var(--text-white);
+}
+
+/* Gör tabellrubriker läsbara mot mörk bakgrund */
+body:not(.admin-mode) .table thead th {
+  background-color: rgba(0, 0, 0, 0.3);
+  color: var(--accent-gold);
+  border-bottom: 2px solid var(--accent-gold);
+}
+
+/* Gör tabellrader läsbara */
+body:not(.admin-mode) .table tbody td {
+  color: #e0e0e0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }

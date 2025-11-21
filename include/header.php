@@ -51,15 +51,26 @@ require_once "include/functions.php";
             <!-- OM INLOGGAD -->
             
             <?php if (isset($_SESSION['role_level']) && $_SESSION['role_level'] >= 5): ?>
+                <!-- MENY FÖR ADMIN (10) OCH LÄRARE (5) -->
+                
+                <li class="nav-item">
+                    <!-- Både Admin och Lärare får länken "Lägg till användare" -->
+                    <!-- Behörighetskollen för VILKA roller de får skapa görs inne på register.php -->
+                    <a class="nav-link" href="register.php"><i class="bi bi-person-plus"></i> Lägg till användare</a>
+                </li>
+                
                 <li class="nav-item">
                     <a class="nav-link" href="admin_dashboard.php"><i class="bi bi-shield-lock"></i> Adminpanel</a>
                 </li>
+            
+            <?php else: ?>
+                <!-- MENY FÖR ELEV (1) -->
+                <li class="nav-item">
+                    <a class="nav-link" href="dashboard.php"><i class="bi bi-map"></i> Min Karta</a>
+                </li>
             <?php endif; ?>
 
-            <li class="nav-item">
-                <a class="nav-link" href="dashboard.php"><i class="bi bi-map"></i> Min Karta</a>
-            </li>
-
+            <!-- GEMENSAMT FÖR ALLA INLOGGADE -->
             <li class="nav-item ms-2">
                 <span class="navbar-text text-light me-2">
                     <small>Inloggad som:</small> <strong><?= htmlspecialchars($_SESSION['username']) ?></strong>
@@ -75,7 +86,6 @@ require_once "include/functions.php";
             <li class="nav-item">
                 <a class="nav-link" href="login.php">Logga in</a>
             </li>
-            <!-- Tog bort "Börja Nu"-knappen härifrån -->
         <?php endif; ?>
 
       </ul>

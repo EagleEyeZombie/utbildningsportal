@@ -12,9 +12,10 @@ if (isset($_SESSION['user_id'])) {
 }
 
 $errorMsg = "";
-$successMsg = ""; // Variabel för framgångsmeddelande
+// SuccessMsg behövs knappt här längre då ingen kommer från register.php automatiskt,
+// men vi låter den vara kvar ifall man manuellt omdirigerar.
+$successMsg = ""; 
 
-// Kollar om vi kom hit från en lyckad registrering
 if (isset($_GET['signup']) && $_GET['signup'] == 'success') {
     $successMsg = "Ditt konto är nu skapat! Logga in nedan.";
 }
@@ -22,7 +23,6 @@ if (isset($_GET['signup']) && $_GET['signup'] == 'success') {
 // 2. Hantera formuläret
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
     
-    // CSRF-check (Säkerhet 5/5)
     if (!verifyCsrfToken($_POST['csrf_token'])) {
         die("Ogiltig CSRF-token. Försök ladda om sidan.");
     }
@@ -30,7 +30,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
     $email = cleanInput($_POST['email']);
     $password = $_POST['password']; 
 
-    // Anropa metoden i class_user.php
     $loginResult = $user_obj->loginUser($email, $password);
 
     if ($loginResult['success']) {
@@ -53,14 +52,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
                 <div class="card-body p-4">
                     <h2 class="text-center mb-4">Logga in</h2>
                     
-                    <!-- VISA SUCCESS MEDDELANDE -->
                     <?php if (!empty($successMsg)): ?>
                         <div class="alert alert-success" role="alert">
                             <?php echo $successMsg; ?>
                         </div>
                     <?php endif; ?>
 
-                    <!-- VISA FELMEDDELANDE -->
                     <?php if (!empty($errorMsg)): ?>
                         <div class="alert alert-danger" role="alert">
                             <?php echo $errorMsg; ?>
@@ -68,7 +65,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
                     <?php endif; ?>
 
                     <form action="login.php" method="POST">
-                        <!-- CSRF Token -->
                         <?php echo csrfInput(); ?>
 
                         <div class="mb-3">
@@ -85,10 +81,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
                             <button type="submit" name="login-submit" class="btn btn-primary">Logga in</button>
                         </div>
                     </form>
+                    
+                    <!-- BORTTAGET: Länken "Saknar du konto?" är borta -->
 
-                    <div class="text-center mt-3">
-                        <p>Saknar du konto? <a href="register.php">Registrera dig här</a></p>
-                    </div>
                 </div>
             </div>
         </div>
