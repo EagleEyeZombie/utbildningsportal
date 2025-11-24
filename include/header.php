@@ -26,6 +26,9 @@ require_once "include/functions.php";
     
     <!-- Custom JS -->
     <script src="js/script.js"></script>
+
+    <!-- VIKTIGT: SortableJS för Sorteringsövningar (Denna rad saknades!) -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     
     <!-- Fix för favicon -->
     <link rel="icon" href="data:,">
@@ -50,27 +53,36 @@ require_once "include/functions.php";
         <?php if (isset($_SESSION['user_id'])): ?>
             <!-- OM INLOGGAD -->
             
-            <?php if (isset($_SESSION['role_level']) && $_SESSION['role_level'] >= 5): ?>
-                <!-- MENY FÖR ADMIN (10) OCH LÄRARE (5) -->
+            <?php if (isset($_SESSION['role_level'])): ?>
                 
-                <li class="nav-item">
-                    <!-- Både Admin och Lärare får länken "Lägg till användare" -->
-                    <!-- Behörighetskollen för VILKA roller de får skapa görs inne på register.php -->
-                    <a class="nav-link" href="register.php"><i class="bi bi-person-plus"></i> Lägg till användare</a>
-                </li>
+                <!-- ADMIN (Level 10) -->
+                <?php if ($_SESSION['role_level'] >= 10): ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="register.php"><i class="bi bi-person-plus"></i> Lägg till användare</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="admin_dashboard.php"><i class="bi bi-shield-lock"></i> Adminpanel</a>
+                    </li>
                 
-                <li class="nav-item">
-                    <a class="nav-link" href="admin_dashboard.php"><i class="bi bi-shield-lock"></i> Adminpanel</a>
-                </li>
-            
-            <?php else: ?>
-                <!-- MENY FÖR ELEV (1) -->
-                <li class="nav-item">
-                    <a class="nav-link" href="dashboard.php"><i class="bi bi-map"></i> Min Karta</a>
-                </li>
+                <!-- LÄRARE (Level 5) -->
+                <?php elseif ($_SESSION['role_level'] == 5): ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="register.php"><i class="bi bi-person-plus"></i> Lägg till elev</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="admin_dashboard.php"><i class="bi bi-shield-lock"></i> Adminpanel</a>
+                    </li>
+                
+                <!-- ELEV (Level 1) -->
+                <?php else: ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard.php"><i class="bi bi-map"></i> Mina Äventyr</a>
+                    </li>
+                <?php endif; ?>
+                
             <?php endif; ?>
 
-            <!-- GEMENSAMT FÖR ALLA INLOGGADE -->
+            <!-- GEMENSAMT FÖR ALLA -->
             <li class="nav-item ms-2">
                 <span class="navbar-text text-light me-2">
                     <small>Inloggad som:</small> <strong><?= htmlspecialchars($_SESSION['username']) ?></strong>

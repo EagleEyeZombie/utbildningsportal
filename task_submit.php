@@ -64,36 +64,47 @@ $passed = ($scorePercent >= 70) ? 1 : 0;
 
 $newBadges = [];
 $nextTaskId = null;
+$leveledUp = false; // Ny flagga: Har vi levlat upp?
+$newLevel = $_SESSION['user_level']; // Standard: Samma som förut
 
 if ($passed) {
     $taskXp = $task['t_xp'];
+    
+    // Uppdatera XP i databasen
     $updateXpSql = "UPDATE users SET u_xp = u_xp + ? WHERE u_id = ?";
     $stmt = $pdo->prepare($updateXpSql);
     $stmt->execute([$taskXp, $userId]);
     
+    // Uppdatera session XP
     $_SESSION['user_xp'] = (isset($_SESSION['user_xp']) ? $_SESSION['user_xp'] : 0) + $taskXp;
     
-    $newLevel = floor($_SESSION['user_xp'] / 100) + 1;
-    if ($newLevel > $_SESSION['user_level']) {
+    // --- LEVEL LOGIK (FIXAD) ---
+    $oldLevel = $_SESSION['user_level']; // Spara gamla nivån
+    $calculatedLevel = floor($_SESSION['user_xp'] / 100) + 1; // Räkna ut ny nivå
+    
+    // Bara om vi faktiskt har klättrat i nivå
+    if ($calculatedLevel > $oldLevel) {
         $updateLevelSql = "UPDATE users SET u_level = ? WHERE u_id = ?";
         $stmt = $pdo->prepare($updateLevelSql);
-        $stmt->execute([$newLevel, $userId]);
-        $_SESSION['user_level'] = $newLevel;
+        $stmt->execute([$calculatedLevel, $userId]);
+        
+        $_SESSION['user_level'] = $calculatedLevel;
+        $newLevel = $calculatedLevel;
+        $leveledUp = true; // Sätt flaggan till sant!
     }
 
     // Kolla Achievements
     $newBadges = $task_obj->checkAchievements($userId, $_SESSION['user_xp']);
 
-    // Hitta nästa uppgift i sagan (nästa nivå för samma typ och genre)
-    // Vi letar efter en uppgift med samma typ, samma genre, men nivå + 1
-    $currentLevel = $task['tl_level'];
-    $nextLevel = $currentLevel + 1;
+    // Hitta nästa uppgift i sagan
+    $currentTaskLevel = $task['tl_level'];
+    $targetTaskLevel = $currentTaskLevel + 1;
     
     $stmtNext = $pdo->prepare("SELECT t_id FROM tasks 
                                JOIN task_levels ON tasks.t_level_fk = task_levels.tl_id 
                                WHERE t_type_fk = ? AND t_genre_fk = ? AND task_levels.tl_level = ? 
                                LIMIT 1");
-    $stmtNext->execute([$task['t_type_fk'], $task['t_genre_fk'], $nextLevel]);
+    $stmtNext->execute([$task['t_type_fk'], $task['t_genre_fk'], $targetTaskLevel]);
     $nextTask = $stmtNext->fetch(PDO::FETCH_ASSOC);
     if ($nextTask) {
         $nextTaskId = $nextTask['t_id'];
@@ -114,19 +125,20 @@ $saved = $task_obj->saveTaskResult($userId, $taskId, $scorePercent, $passed);
                         <i class="bi bi-trophy-fill text-warning display-1"></i>
                         <h2 class="mt-3 text-success">Bra jobbat!</h2>
                         
-                        <?php if (isset($newLevel) && $newLevel > ($oldLevel ?? 0)): ?>
-                            <div class="alert alert-info mt-3">
-                                <h4><i class="bi bi-arrow-up-circle"></i> LEVEL UP!</h4>
-                                <p>Du har nått nivå <?= $newLevel ?>!</p>
+                        <!-- VISA LEVEL UP (Bara om flaggan är sann) -->
+                        <?php if ($leveledUp): ?>
+                            <div class="alert alert-info mt-3 shadow-sm border-info">
+                                <h4><i class="bi bi-arrow-up-circle-fill"></i> LEVEL UP!</h4>
+                                <p class="mb-0">Grattis! Du har nått <strong>Nivå <?= $newLevel ?></strong>!</p>
                             </div>
                         <?php endif; ?>
 
                         <?php if (!empty($newBadges)): ?>
-                            <div class="mt-3 p-3 bg-light border rounded">
-                                <h5 class="text-dark">Du har låst upp nya utmärkelser!</h5>
-                                <div class="d-flex justify-content-center gap-2 mt-2">
+                            <div class="mt-3 p-3 bg-light border rounded shadow-sm">
+                                <h5 class="text-dark mb-2">Du har låst upp nya utmärkelser!</h5>
+                                <div class="d-flex justify-content-center gap-2 flex-wrap">
                                     <?php foreach ($newBadges as $badge): ?>
-                                        <div class="badge bg-warning text-dark p-2 fs-6">
+                                        <div class="badge bg-warning text-dark p-2 fs-6 border border-dark">
                                             <i class="bi <?= $badge['a_icon'] ?>"></i> <?= $badge['a_name'] ?>
                                         </div>
                                     <?php endforeach; ?>
@@ -159,7 +171,7 @@ $saved = $task_obj->saveTaskResult($userId, $taskId, $scorePercent, $passed);
                     <div class="d-grid gap-2 mt-4">
                         <?php if ($passed && $nextTaskId): ?>
                             <!-- KNAPP FÖR NÄSTA KAPITEL -->
-                            <a href="task_view.php?id=<?= $nextTaskId ?>" class="btn btn-success btn-lg">
+                            <a href="task_view.php?id=<?= $nextTaskId ?>" class="btn btn-success btn-lg shadow">
                                 Fortsätt äventyret <i class="bi bi-arrow-right-circle"></i>
                             </a>
                         <?php endif; ?>
