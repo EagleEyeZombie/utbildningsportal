@@ -1,2 +1,7 @@
+# VS Code
 .vscode/
-~$strapport.docx
+
+# Temporary Word files
+~$*.docx
+~$*.doc
+*.tmp
