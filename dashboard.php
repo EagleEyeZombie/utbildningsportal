@@ -84,7 +84,8 @@ function buildUrl($params) {
                     <?php if (!empty($myBadges)): ?>
                         <div class="d-flex flex-wrap justify-content-center gap-3">
                             <?php foreach ($myBadges as $badge): ?>
-                                <div class="badge-item p-2 text-center">
+                                <!-- UPPDATERAT: Lade till title-attributet här -->
+                                <div class="badge-item p-2 text-center" title="<?= htmlspecialchars($badge['a_description']) ?>" style="cursor: help;">
                                     <i class="bi <?= htmlspecialchars($badge['a_icon']) ?> display-4 text-warning" style="text-shadow: 1px 1px 2px #000;"></i>
                                     <div class="mt-1 fw-bold text-white"><?= htmlspecialchars($badge['a_name']) ?></div>
                                 </div>
