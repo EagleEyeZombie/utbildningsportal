@@ -28,8 +28,9 @@ $correctCount = 0;
 $totalQuestions = 0;
 
 // --- RÄTTNING ---
+
+// 1. SORTERING
 if (strpos($taskTypeName, 'sortering') !== false) {
-    // Sortering
     $correctOrder = $questions['s'];
     $totalQuestions = count($correctOrder);
     for ($i = 0; $i < $totalQuestions; $i++) {
@@ -37,8 +38,27 @@ if (strpos($taskTypeName, 'sortering') !== false) {
         $studentSentence = isset($userAnswers[$i]) ? trim($userAnswers[$i]) : '';
         if ($correctSentence === $studentSentence) { $correctCount++; }
     }
-} else {
-    // Flerval och Sant/Falskt
+} 
+
+// 2. PARA IHOP (NY!) - Eget block här, inte inuti foreach!
+elseif (strpos($taskTypeName, 'para ihop') !== false) {
+    $correctPairs = $questions; // Facit
+    $totalQuestions = count($correctPairs);
+    
+    for ($i = 0; $i < $totalQuestions; $i++) {
+        // Facit: Vilken term ska ligga på plats $i?
+        $correctTerm = trim($correctPairs[$i]['term']);
+        // Elevens svar: Vad lade eleven på plats $i?
+        $studentTerm = isset($userAnswers[$i]) ? trim($userAnswers[$i]) : '';
+        
+        if ($correctTerm === $studentTerm) {
+            $correctCount++;
+        }
+    }
+}
+
+// 3. FLERVAL & SANT/FALSKT
+else {
     $totalQuestions = count($questions);
     foreach ($questions as $index => $q) {
         $questionKey = $index + 1; 
@@ -64,39 +84,31 @@ $passed = ($scorePercent >= 70) ? 1 : 0;
 
 $newBadges = [];
 $nextTaskId = null;
-$leveledUp = false; // Ny flagga: Har vi levlat upp?
-$newLevel = $_SESSION['user_level']; // Standard: Samma som förut
+$leveledUp = false;
+$newLevel = $_SESSION['user_level'];
 
 if ($passed) {
     $taskXp = $task['t_xp'];
-    
-    // Uppdatera XP i databasen
     $updateXpSql = "UPDATE users SET u_xp = u_xp + ? WHERE u_id = ?";
     $stmt = $pdo->prepare($updateXpSql);
     $stmt->execute([$taskXp, $userId]);
     
-    // Uppdatera session XP
     $_SESSION['user_xp'] = (isset($_SESSION['user_xp']) ? $_SESSION['user_xp'] : 0) + $taskXp;
     
-    // --- LEVEL LOGIK (FIXAD) ---
-    $oldLevel = $_SESSION['user_level']; // Spara gamla nivån
-    $calculatedLevel = floor($_SESSION['user_xp'] / 100) + 1; // Räkna ut ny nivå
-    
-    // Bara om vi faktiskt har klättrat i nivå
+    $oldLevel = $_SESSION['user_level'];
+    $calculatedLevel = floor($_SESSION['user_xp'] / 100) + 1;
     if ($calculatedLevel > $oldLevel) {
         $updateLevelSql = "UPDATE users SET u_level = ? WHERE u_id = ?";
         $stmt = $pdo->prepare($updateLevelSql);
         $stmt->execute([$calculatedLevel, $userId]);
-        
         $_SESSION['user_level'] = $calculatedLevel;
         $newLevel = $calculatedLevel;
-        $leveledUp = true; // Sätt flaggan till sant!
+        $leveledUp = true;
     }
 
-    // Kolla Achievements
     $newBadges = $task_obj->checkAchievements($userId, $_SESSION['user_xp']);
 
-    // Hitta nästa uppgift i sagan
+    // Hitta nästa uppgift
     $currentTaskLevel = $task['tl_level'];
     $targetTaskLevel = $currentTaskLevel + 1;
     
@@ -111,9 +123,7 @@ if ($passed) {
     }
 }
 
-// Spara resultatet
 $saved = $task_obj->saveTaskResult($userId, $taskId, $scorePercent, $passed);
-
 ?>
 
 <div class="container mt-5">
@@ -125,7 +135,6 @@ $saved = $task_obj->saveTaskResult($userId, $taskId, $scorePercent, $passed);
                         <i class="bi bi-trophy-fill text-warning display-1"></i>
                         <h2 class="mt-3 text-success">Bra jobbat!</h2>
                         
-                        <!-- VISA LEVEL UP (Bara om flaggan är sann) -->
                         <?php if ($leveledUp): ?>
                             <div class="alert alert-info mt-3 shadow-sm border-info">
                                 <h4><i class="bi bi-arrow-up-circle-fill"></i> LEVEL UP!</h4>
@@ -170,7 +179,6 @@ $saved = $task_obj->saveTaskResult($userId, $taskId, $scorePercent, $passed);
                     
                     <div class="d-grid gap-2 mt-4">
                         <?php if ($passed && $nextTaskId): ?>
-                            <!-- KNAPP FÖR NÄSTA KAPITEL -->
                             <a href="task_view.php?id=<?= $nextTaskId ?>" class="btn btn-success btn-lg shadow">
                                 Fortsätt äventyret <i class="bi bi-arrow-right-circle"></i>
                             </a>

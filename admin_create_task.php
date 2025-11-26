@@ -1,26 +1,21 @@
 <?php
 require_once "include/header.php";
 
-// --- SÄKERHETSVAKT ---
 if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
     header("Location: login.php");
     exit;
 }
 
-// Hämta data till dropdowns
 $types = $task_obj->getAllTypes();
 $levels = $task_obj->getAllLevels();
 $allClasses = $task_obj->getAllClasses();
-$allGenres = $task_obj->getAllGenres(); // <-- NY
+$allGenres = $task_obj->getAllGenres();
 $errorMsg = "";
 $successMsg = "";
 
-// Hantera formulär-inlämning
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
     
-    if (!verifyCsrfToken($_POST['csrf_token'])) {
-        die("Ogiltig CSRF-token.");
-    }
+    if (!verifyCsrfToken($_POST['csrf_token'])) { die("Ogiltig CSRF-token."); }
 
     $tName = cleanInput($_POST['t_name']);
     $tType = cleanInput($_POST['t_type']);
@@ -28,20 +23,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
     $tText = cleanInput($_POST['t_text']); 
     $teacherId = $_SESSION['user_id'];
     $tXp = cleanInput($_POST['t_xp']);
-    
-    $tClass = cleanInput($_POST['t_class']);
-    $tClass = empty($tClass) ? null : $tClass;
-
-    $tGenre = cleanInput($_POST['t_genre']); // <-- NY
-    $tGenre = empty($tGenre) ? null : $tGenre; // <-- NY
+    $tClass = !empty($_POST['t_class']) ? cleanInput($_POST['t_class']) : null;
+    $tGenre = !empty($_POST['t_genre']) ? cleanInput($_POST['t_genre']) : null;
 
     $questionsData = [];
     
     $typeNameQuery = $pdo->prepare("SELECT tt_name FROM task_types WHERE tt_id = ?");
     $typeNameQuery->execute([$tType]);
-    $taskTypeName = $typeNameQuery->fetchColumn();
+    $taskTypeName = strtolower($typeNameQuery->fetchColumn());
     
-    if (strpos(strtolower($taskTypeName), 'flerval') !== false) {
+    // 1. FLERVAL
+    if (strpos($taskTypeName, 'flerval') !== false) {
         if (isset($_POST['questions_mc'])) {
             foreach ($_POST['questions_mc'] as $q) {
                 if (!empty($q['question'])) {
@@ -50,7 +42,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
             }
         }
     } 
-    elseif (strpos(strtolower($taskTypeName), 'sant/falskt') !== false) {
+    // 2. SANT/FALSKT
+    elseif (strpos($taskTypeName, 'sant/falskt') !== false) {
         if (isset($_POST['questions_tf'])) {
             foreach ($_POST['questions_tf'] as $q) {
                 if (!empty($q['question'])) {
@@ -59,7 +52,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
             }
         }
     }
-    elseif (strpos(strtolower($taskTypeName), 'sortering') !== false) {
+    // 3. SORTERING
+    elseif (strpos($taskTypeName, 'sortering') !== false) {
         if (isset($_POST['questions_sort'][0]['sentences'])) {
             $sentences = trim($_POST['questions_sort'][0]['sentences']);
             $sentencesArray = preg_split('/(\r\n|\r|\n)/', $sentences, -1, PREG_SPLIT_NO_EMPTY);
@@ -67,10 +61,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
             $questionsData = ['s' => $cleanedArray];
         }
     }
+    // 4. PARA IHOP (NYTT!)
+    elseif (strpos($taskTypeName, 'para ihop') !== false) {
+        if (isset($_POST['questions_pair'])) {
+            foreach ($_POST['questions_pair'] as $p) {
+                if (!empty($p['term']) && !empty($p['def'])) {
+                    $questionsData[] = ['term' => cleanInput($p['term']), 'def' => cleanInput($p['def'])];
+                }
+            }
+        }
+    }
 
     $jsonQuestions = json_encode($questionsData, JSON_UNESCAPED_UNICODE);
 
-    // Spara via klassen - LADE TILL $tGenre
     $result = $task_obj->createTask($tName, $tType, $tLevel, $teacherId, $tClass, $tGenre, $tText, $jsonQuestions, $tXp);
 
     if ($result['success']) {
@@ -83,13 +86,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
 
 <div class="container mt-5 mb-5">
     <h1>Skapa ny uppgift</h1>
-    
-    <?php if ($errorMsg): ?>
-        <div class="alert alert-danger"><?= $errorMsg ?></div>
-    <?php endif; ?>
-    <?php if ($successMsg): ?>
-        <div class="alert alert-success"><?= $successMsg ?></div>
-    <?php endif; ?>
+    <?php if ($errorMsg): ?> <div class="alert alert-danger"><?= $errorMsg ?></div> <?php endif; ?>
+    <?php if ($successMsg): ?> <div class="alert alert-success"><?= $successMsg ?></div> <?php endif; ?>
 
     <form action="" method="POST" id="taskForm">
         <?= csrfInput() ?>
@@ -103,8 +101,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                             <label class="form-label">Uppgiftens Namn</label>
                             <input type="text" name="t_name" class="form-control" required placeholder="T.ex. Verb och Substantiv">
                         </div>
-                        
-                        <!-- RAD 1 -->
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Typ av uppgift</label>
@@ -123,8 +119,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                                 </select>
                             </div>
                         </div>
-                        
-                        <!-- RAD 2 -->
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Svårighetsgrad</label>
@@ -148,7 +142,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                                 <input type="number" name="t_xp" class="form-control" value="10" required>
                             </div>
                         </div>
-
                         <div class="mb-3">
                             <label class="form-label">Instruktioner / Text</label>
                             <textarea name="t_text" class="form-control" rows="3" placeholder="Förklaring till eleven..."></textarea>
@@ -156,7 +149,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                     </div>
                 </div>
 
-                <!-- FORMULÄR-DELAR (Samma som förut, bara dold/visad med JS) -->
+                <!-- FORM: FLERVAL -->
                 <div class="card shadow-sm task-form-section" id="form-flerval">
                     <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                         <span>Frågor (Flerval)</span>
@@ -165,6 +158,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                     <div class="card-body" id="questions-container"></div>
                 </div>
 
+                <!-- FORM: SANT/FALSKT -->
                 <div class="card shadow-sm task-form-section d-none" id="form-sant-falskt">
                     <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                         <span>Frågor (Sant/Falskt)</span>
@@ -173,6 +167,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                     <div class="card-body" id="tf-questions-container"></div>
                 </div>
 
+                <!-- FORM: SORTERING -->
                 <div class="card shadow-sm task-form-section d-none" id="form-sortering">
                     <div class="card-header bg-secondary text-white"><span>Frågor (Sortering)</span></div>
                     <div class="card-body" id="sorting-questions-container">
@@ -184,24 +179,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                     </div>
                 </div>
 
+                <!-- FORM: PARA IHOP (NYTT!) -->
+                <div class="card shadow-sm task-form-section d-none" id="form-paraihop">
+                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                        <span>Para ihop (Term och Betydelse)</span>
+                        <button type="button" class="btn btn-sm btn-light" onclick="addPairField()">+ Lägg till par</button>
+                    </div>
+                    <div class="card-body" id="pair-questions-container">
+                        <!-- Par fylls på här -->
+                    </div>
+                </div>
+
                 <div class="d-grid mt-4">
                     <button type="submit" name="create-task" class="btn btn-success btn-lg">Spara Uppgift</button>
                 </div>
             </div>
-
-            <!-- SIDOPANEL -->
-            <div class="col-md-4">
+            
+             <div class="col-md-4">
                 <div class="alert alert-info">
                     <h5><i class="bi bi-info-circle"></i> Tips</h5>
-                    <p>Välj Genre för att kategorisera uppgiften (t.ex. Fantasy eller Sci-Fi).</p>
+                    <p>Välj "Para ihop" för att skapa en övning där eleven drar ord till rätt beskrivning.</p>
                 </div>
             </div>
         </div>
     </form>
 </div>
 
-<!-- JAVASCRIPT (Samma som förut) -->
 <script>
+    // --- JS: FLERVAL ---
     let questionCount = 0;
     function addQuestionField() {
         questionCount++;
@@ -209,10 +214,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
         const html = `
         <div class="border p-3 mb-3 rounded bg-light position-relative" id="q-row-${questionCount}">
             <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()"></button>
-            <div class="mb-2">
-                <label class="form-label fw-bold">Fråga ${questionCount}</label>
-                <input type="text" name="questions_mc[${questionCount}][question]" class="form-control" required placeholder="Vad heter...?">
-            </div>
+            <div class="mb-2"><label class="form-label fw-bold">Fråga ${questionCount}</label><input type="text" name="questions_mc[${questionCount}][question]" class="form-control" required placeholder="Fråga"></div>
             <div class="row g-2">
                 <div class="col-md-6"><input type="text" name="questions_mc[${questionCount}][correct]" class="form-control border-success" required placeholder="Rätt svar"></div>
                 <div class="col-md-6"><input type="text" name="questions_mc[${questionCount}][wrong1]" class="form-control border-danger" required placeholder="Fel svar 1"></div>
@@ -223,6 +225,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
         container.insertAdjacentHTML('beforeend', html);
     }
 
+    // --- JS: SANT/FALSKT ---
     let tfQuestionCount = 0;
     function addTrueFalseField() {
         tfQuestionCount++;
@@ -230,21 +233,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
         const html = `
         <div class="border p-3 mb-3 rounded bg-light position-relative" id="tf-q-row-${tfQuestionCount}">
             <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()"></button>
-            <div class="mb-2">
-                <label class="form-label fw-bold">Påstående ${tfQuestionCount}</label>
-                <input type="text" name="questions_tf[${tfQuestionCount}][question]" class="form-control" required placeholder="Påstående">
-            </div>
-            <div class="mb-2">
-                <label class="form-label">Rätt svar</label>
-                <select name="questions_tf[${tfQuestionCount}][correct]" class="form-select">
-                    <option value="Sant">Sant</option>
-                    <option value="Falskt">Falskt</option>
-                </select>
+            <div class="mb-2"><label class="form-label fw-bold">Påstående ${tfQuestionCount}</label><input type="text" name="questions_tf[${tfQuestionCount}][question]" class="form-control" required placeholder="Påstående"></div>
+            <div class="mb-2"><label class="form-label">Rätt svar</label><select name="questions_tf[${tfQuestionCount}][correct]" class="form-select"><option value="Sant">Sant</option><option value="Falskt">Falskt</option></select></div>
+        </div>`;
+        container.insertAdjacentHTML('beforeend', html);
+    }
+
+    // --- JS: PARA IHOP (NYTT!) ---
+    let pairCount = 0;
+    function addPairField() {
+        pairCount++;
+        const container = document.getElementById('pair-questions-container');
+        const html = `
+        <div class="border p-3 mb-3 rounded bg-light position-relative" id="pair-row-${pairCount}">
+            <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()"></button>
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Term (Vänster sida)</label>
+                    <input type="text" name="questions_pair[${pairCount}][term]" class="form-control" required placeholder="T.ex. Sköldpadda">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Betydelse (Höger sida)</label>
+                    <input type="text" name="questions_pair[${pairCount}][def]" class="form-control" required placeholder="T.ex. Djuret som Sara valde">
+                </div>
             </div>
         </div>`;
         container.insertAdjacentHTML('beforeend', html);
     }
 
+    // --- JS: BYT FORMULÄR ---
     const dropdown = document.getElementById('taskTypeDropdown');
     const forms = document.querySelectorAll('.task-form-section');
     
@@ -261,6 +278,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
         if (selectedText.includes('flerval')) { activeFormId = 'form-flerval'; } 
         else if (selectedText.includes('sant/falskt')) { activeFormId = 'form-sant-falskt'; } 
         else if (selectedText.includes('sortering')) { activeFormId = 'form-sortering'; }
+        else if (selectedText.includes('para ihop')) { activeFormId = 'form-paraihop'; } // <-- NYTT
 
         if (activeFormId) {
             const activeForm = document.getElementById(activeFormId);
@@ -268,7 +286,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
             activeForm.querySelectorAll('input, textarea, select').forEach(input => {
                 input.disabled = false;
                 const name = input.name;
-                if (name.includes('[question]') || name.includes('[correct]') || name.includes('[wrong1]') || name.includes('[sentences]')) {
+                // Enkel koll för required
+                if (name.includes('[question]') || name.includes('[correct]') || name.includes('[term]') || name.includes('[def]') || name.includes('[sentences]')) {
                     input.required = true;
                 }
             });
@@ -282,6 +301,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
         const selectedText = dropdown.options[dropdown.selectedIndex].text.toLowerCase();
         if (selectedText.includes('flerval')) { addQuestionField(); } 
         else if (selectedText.includes('sant/falskt')) { addTrueFalseField(); }
+        else if (selectedText.includes('para ihop')) { addPairField(); } // <-- NYTT
     }
     
     window.onload = initForms;

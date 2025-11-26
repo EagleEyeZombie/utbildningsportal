@@ -19,10 +19,9 @@ if (!$task) {
 $unlockedLevel = $task_obj->getUnlockedLevel($_SESSION['user_id'], $task['t_type_fk'], $task['t_genre_fk']);
 $isLocked = ($task['tl_level'] > $unlockedLevel);
 
-// Vi hämtar data oavsett, men vi visar olika saker beroende på $isLocked
 $questions = json_decode($task['t_questions'], true);
 $taskTypeName = strtolower($task['type_name']); 
-$totalSteps = (strpos($taskTypeName, 'sortering') !== false) ? 2 : count($questions) + 1; 
+$totalSteps = (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para ihop') !== false) ? 2 : count($questions) + 1; 
 ?>
 
 <div class="container mt-5 mb-5">
@@ -30,23 +29,18 @@ $totalSteps = (strpos($taskTypeName, 'sortering') !== false) ? 2 : count($questi
         <div class="col-md-8">
             
             <?php if ($isLocked): ?>
-                <!-- --- LÅST SKÄRM (NYTT) --- -->
-                <div class="card shadow-lg text-center border-warning" style="border-width: 3px;">
-                    <div class="card-body p-5 bg-light rounded">
+                <!-- LÅST SKÄRM -->
+                <div class="card shadow-lg text-center border-secondary" style="border-width: 3px; background-color: #f8d7da;">
+                    <div class="card-body p-5 rounded">
                         <i class="bi bi-lock-fill display-1 text-secondary mb-4"></i>
                         <h1 class="text-danger mb-3" style="font-family: 'Cinzel Decorative';">Detta kapitel är låst!</h1>
-                        <p class="lead mb-4">
-                            Du försöker nå <strong><?= htmlspecialchars($task['t_name']) ?></strong> (Nivå <?= $task['tl_level'] ?>), 
-                            men du har bara låst upp till Nivå <?= $unlockedLevel ?>.
-                        </p>
-                        <p class="text-muted mb-4">Du måste slutföra de tidigare kapitlen i sagan för att fortsätta.</p>
-                        <a href="dashboard.php" class="btn btn-primary btn-lg">Tillbaka till Äventyret</a>
+                        <p class="lead mb-4 text-dark">Du har inte låst upp denna nivå än.</p>
+                        <a href="dashboard.php" class="btn btn-primary btn-lg">Tillbaka till Kartan</a>
                     </div>
                 </div>
             
             <?php else: ?>
-                <!-- --- ORDINARIE QUIZ-VY (Om man får vara här) --- -->
-            
+                <!-- ORDINARIE VY -->
                 <div class="progress mb-4" style="height: 25px;">
                     <div id="progressBar" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;">Start</div>
                 </div>
@@ -61,28 +55,78 @@ $totalSteps = (strpos($taskTypeName, 'sortering') !== false) ? 2 : count($questi
                             <div class="card-body p-5">
                                 <span class="badge bg-secondary mb-2"><?= htmlspecialchars($task['type_name']) ?></span>
                                 <h1 class="card-title mb-4"><?= htmlspecialchars($task['t_name']) ?></h1>
-                                
                                 <div class="task-instruction-panel mb-4">
                                     <p class="lead" style="white-space: pre-wrap;"><?= htmlspecialchars($task['t_text']) ?></p>
                                 </div>
-
                                 <div class="d-grid gap-3">
-                                    <button type="button" class="btn btn-primary btn-lg" onclick="nextStep()">
-                                        Jag har läst texten och är redo <i class="bi bi-arrow-right"></i>
-                                    </button>
-                                    <a href="dashboard.php" class="btn btn-outline-secondary">
-                                        <i class="bi bi-x-lg"></i> Jag är inte redo (Gå tillbaka)
-                                    </a>
+                                    <button type="button" class="btn btn-primary btn-lg" onclick="nextStep()">Jag har läst texten och är redo <i class="bi bi-arrow-right"></i></button>
+                                    <a href="dashboard.php" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i> Jag är inte redo (Gå tillbaka)</a>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- STEG 2: FRÅGORNA -->
+                    <!-- STEG 2: UPPGIFTER -->
                     <?php 
                     $qCount = 0;
-                    if (strpos($taskTypeName, 'sortering') !== false) {
-                        // Sortering
+                    
+                    // === PARA IHOP (NYTT!) ===
+                    if (strpos($taskTypeName, 'para ihop') !== false) {
+                        $qCount++;
+                        $pairs = $questions; // Array av {term, def}
+                        // Vi blandar termerna så de inte ligger rätt från början
+                        $shuffledTerms = $pairs;
+                        shuffle($shuffledTerms);
+                        ?>
+                        <div class="step-card d-none" id="step-<?= $qCount ?>">
+                            <div class="card shadow border-0">
+                                <div class="card-header bg-primary text-white py-3">
+                                    <h4 class="m-0">Para Ihop</h4>
+                                </div>
+                                <div class="card-body p-4">
+                                    <h5 class="mb-4">Dra orden till vänster så de matchar beskrivningen till höger.</h5>
+                                    
+                                    <div class="row">
+                                        <!-- VÄNSTER: DRAGBARA TERMER -->
+                                        <div class="col-6">
+                                            <h6 class="text-center text-muted mb-3">ORD (Dra dessa)</h6>
+                                            <div id="sortable-terms" class="list-group">
+                                                <?php foreach ($shuffledTerms as $index => $pair): ?>
+                                                    <div class="list-group-item list-group-item-action p-3 border rounded mb-2 sortable-item text-center" style="cursor: grab; background-color: #f8f9fa; color: #333;">
+                                                        <i class="bi bi-grip-vertical me-2 text-muted"></i>
+                                                        <strong><?= htmlspecialchars($pair['term']) ?></strong>
+                                                        <!-- Vi skickar med termen som svar -->
+                                                        <input type="hidden" name="answers[<?= $index ?>]" value="<?= htmlspecialchars($pair['term']) ?>">
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+
+                                        <!-- HÖGER: FASTA BESKRIVNINGAR -->
+                                        <div class="col-6">
+                                            <h6 class="text-center text-muted mb-3">BETYDELSE</h6>
+                                            <div class="list-group">
+                                                <?php foreach ($pairs as $pair): ?>
+                                                    <div class="list-group-item p-3 border rounded mb-2 bg-light text-center d-flex align-items-center justify-content-center" style="height: 66px; color: #333;"> <!-- Fast höjd för matchning -->
+                                                        <?= htmlspecialchars($pair['def']) ?>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex justify-content-between mt-4">
+                                        <button type="button" class="btn btn-outline-secondary" onclick="prevStep()"><i class="bi bi-arrow-left"></i> Tillbaka</button>
+                                        <button type="submit" class="btn btn-success btn-lg">Slutför och Rätta <i class="bi bi-check-lg"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php
+                    }
+                    
+                    // === SORTERING ===
+                    elseif (strpos($taskTypeName, 'sortering') !== false) {
                         $qCount++;
                         $correctOrder = $questions['s']; 
                         $shuffledOrder = $correctOrder; 
@@ -112,8 +156,10 @@ $totalSteps = (strpos($taskTypeName, 'sortering') !== false) ? 2 : count($questi
                             </div>
                         </div>
                         <?php
-                    } else {
-                        // Flerval / SantFalskt
+                    } 
+                    
+                    // === FLERVAL / SANT/FALSKT ===
+                    else {
                         foreach ($questions as $index => $q): 
                             $qCount++;
                         ?>
@@ -190,7 +236,7 @@ $totalSteps = (strpos($taskTypeName, 'sortering') !== false) ? 2 : count($questi
                             bar.innerText = "Läser texten...";
                             bar.className = "progress-bar bg-info progress-bar-striped";
                         } else {
-                            bar.innerText = (taskType.includes('sortering')) ? "Sortera meningarna" : `Fråga ${currentStep} av ${totalSteps-1}`;
+                            bar.innerText = (taskType.includes('sortering') || taskType.includes('para ihop')) ? "Lös uppgiften" : `Fråga ${currentStep} av ${totalSteps-1}`;
                             bar.className = "progress-bar bg-success progress-bar-striped progress-bar-animated";
                         }
                     }
@@ -216,12 +262,12 @@ $totalSteps = (strpos($taskTypeName, 'sortering') !== false) ? 2 : count($questi
 
                     updateProgress();
 
+                    // Sortable för Sortering
                     if (taskType.includes('sortering')) {
                         const list = document.getElementById('sortable-list');
                         if(list) {
                             Sortable.create(list, {
-                                animation: 150, 
-                                ghostClass: 'sortable-ghost', 
+                                animation: 150, ghostClass: 'sortable-ghost', 
                                 onEnd: function (evt) {
                                     const items = list.querySelectorAll('.sortable-item');
                                     items.forEach((item, index) => {
@@ -230,15 +276,29 @@ $totalSteps = (strpos($taskTypeName, 'sortering') !== false) ? 2 : count($questi
                                     });
                                 }
                             });
-                            document.querySelectorAll('.sortable-item').forEach(item => {
-                                item.style.cursor = 'grab';
+                        }
+                    }
+
+                    // Sortable för Para Ihop (Endast vänster sida dragbar)
+                    if (taskType.includes('para ihop')) {
+                        const termList = document.getElementById('sortable-terms');
+                        if(termList) {
+                            Sortable.create(termList, {
+                                animation: 150, ghostClass: 'sortable-ghost', 
+                                onEnd: function (evt) {
+                                    const items = termList.querySelectorAll('.sortable-item');
+                                    items.forEach((item, index) => {
+                                        // Uppdatera index så att ordningen sparas (0 = överst, 1 = näst överst osv.)
+                                        const input = item.querySelector('input[type="hidden"]');
+                                        input.name = `answers[${index}]`; 
+                                    });
+                                }
                             });
                         }
                     }
                 </script>
             
-            <?php endif; // Slut på if($isLocked) ?>
-
+            <?php endif; ?>
         </div>
     </div>
 </div>
