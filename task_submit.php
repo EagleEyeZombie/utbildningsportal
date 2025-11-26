@@ -57,6 +57,21 @@ elseif (strpos($taskTypeName, 'para ihop') !== false) {
     }
 }
 
+elseif (strpos($taskTypeName, 'textluckor') !== false) {
+    // --- 5. RÄTTA TEXTLUCKOR (NY!) ---
+    $gaps = $questions['gaps'];
+    $totalQuestions = count($gaps);
+    
+    for ($i = 0; $i < $totalQuestions; $i++) {
+        $correctWord = trim(strtolower($gaps[$i]['word']));
+        $studentWord = isset($userAnswers[$i]) ? trim(strtolower($userAnswers[$i])) : '';
+        
+        if ($correctWord === $studentWord) {
+            $correctCount++;
+        }
+    }
+}
+
 // 3. FLERVAL & SANT/FALSKT
 else {
     $totalQuestions = count($questions);
@@ -77,6 +92,8 @@ else {
         }
     }
 }
+
+
 
 // --- RESULTATBERÄKNING ---
 $scorePercent = ($totalQuestions > 0) ? round(($correctCount / $totalQuestions) * 100) : 0;

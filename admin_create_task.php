@@ -32,7 +32,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
     $typeNameQuery->execute([$tType]);
     $taskTypeName = strtolower($typeNameQuery->fetchColumn());
     
-    // 1. FLERVAL
     if (strpos($taskTypeName, 'flerval') !== false) {
         if (isset($_POST['questions_mc'])) {
             foreach ($_POST['questions_mc'] as $q) {
@@ -42,7 +41,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
             }
         }
     } 
-    // 2. SANT/FALSKT
     elseif (strpos($taskTypeName, 'sant/falskt') !== false) {
         if (isset($_POST['questions_tf'])) {
             foreach ($_POST['questions_tf'] as $q) {
@@ -52,7 +50,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
             }
         }
     }
-    // 3. SORTERING
     elseif (strpos($taskTypeName, 'sortering') !== false) {
         if (isset($_POST['questions_sort'][0]['sentences'])) {
             $sentences = trim($_POST['questions_sort'][0]['sentences']);
@@ -61,7 +58,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
             $questionsData = ['s' => $cleanedArray];
         }
     }
-    // 4. PARA IHOP (NYTT!)
     elseif (strpos($taskTypeName, 'para ihop') !== false) {
         if (isset($_POST['questions_pair'])) {
             foreach ($_POST['questions_pair'] as $p) {
@@ -70,6 +66,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                 }
             }
         }
+    }
+    // 5. TEXTLUCKOR (NYTT!)
+    elseif (strpos($taskTypeName, 'textluckor') !== false) {
+        $gaps = [];
+        if (isset($_POST['questions_gaps'])) {
+            foreach ($_POST['questions_gaps'] as $g) {
+                if (!empty($g['sentence']) && !empty($g['word'])) {
+                    $gaps[] = ['sentence' => cleanInput($g['sentence']), 'word' => cleanInput($g['word'])];
+                }
+            }
+        }
+        
+        // Hantera falska ord (distractors)
+        $distractors = [];
+        if (!empty($_POST['gap_distractors'])) {
+            $rawDistractors = explode(',', $_POST['gap_distractors']);
+            foreach($rawDistractors as $d) {
+                $d = trim($d);
+                if(!empty($d)) $distractors[] = cleanInput($d);
+            }
+        }
+        
+        $questionsData = ['gaps' => $gaps, 'distractors' => $distractors];
     }
 
     $jsonQuestions = json_encode($questionsData, JSON_UNESCAPED_UNICODE);
@@ -179,14 +198,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
                     </div>
                 </div>
 
-                <!-- FORM: PARA IHOP (NYTT!) -->
+                <!-- FORM: PARA IHOP -->
                 <div class="card shadow-sm task-form-section d-none" id="form-paraihop">
                     <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                         <span>Para ihop (Term och Betydelse)</span>
                         <button type="button" class="btn btn-sm btn-light" onclick="addPairField()">+ Lägg till par</button>
                     </div>
-                    <div class="card-body" id="pair-questions-container">
-                        <!-- Par fylls på här -->
+                    <div class="card-body" id="pair-questions-container"></div>
+                </div>
+
+                <!-- FORM: TEXTLUCKOR (NYTT!) -->
+                <div class="card shadow-sm task-form-section d-none" id="form-textluckor">
+                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                        <span>Textluckor</span>
+                        <button type="button" class="btn btn-sm btn-light" onclick="addGapField()">+ Lägg till mening</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">Skriv meningen och använd <strong>___</strong> där luckan ska vara. Skriv det rätta ordet i rutan bredvid.</div>
+                        <div id="gaps-container"></div>
+                        
+                        <div class="mt-4">
+                            <label class="form-label fw-bold">Falska ord (Distractors)</label>
+                            <input type="text" name="gap_distractors" class="form-control" placeholder="Separera med komma (t.ex. röd, blå, grön)">
+                            <div class="form-text">Dessa ord kommer också finnas med i listan för att göra det svårare.</div>
+                        </div>
                     </div>
                 </div>
 
@@ -198,7 +233,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
              <div class="col-md-4">
                 <div class="alert alert-info">
                     <h5><i class="bi bi-info-circle"></i> Tips</h5>
-                    <p>Välj "Para ihop" för att skapa en övning där eleven drar ord till rätt beskrivning.</p>
+                    <p>Välj rätt uppgiftstyp för att se rätt formulär.</p>
                 </div>
             </div>
         </div>
@@ -206,7 +241,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
 </div>
 
 <script>
-    // --- JS: FLERVAL ---
+    // --- FLERVAL ---
     let questionCount = 0;
     function addQuestionField() {
         questionCount++;
@@ -225,7 +260,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
         container.insertAdjacentHTML('beforeend', html);
     }
 
-    // --- JS: SANT/FALSKT ---
+    // --- SANT/FALSKT ---
     let tfQuestionCount = 0;
     function addTrueFalseField() {
         tfQuestionCount++;
@@ -239,7 +274,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
         container.insertAdjacentHTML('beforeend', html);
     }
 
-    // --- JS: PARA IHOP (NYTT!) ---
+    // --- PARA IHOP ---
     let pairCount = 0;
     function addPairField() {
         pairCount++;
@@ -248,20 +283,36 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
         <div class="border p-3 mb-3 rounded bg-light position-relative" id="pair-row-${pairCount}">
             <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()"></button>
             <div class="row">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">Term (Vänster sida)</label>
-                    <input type="text" name="questions_pair[${pairCount}][term]" class="form-control" required placeholder="T.ex. Sköldpadda">
+                <div class="col-md-6"><label class="form-label fw-bold">Term</label><input type="text" name="questions_pair[${pairCount}][term]" class="form-control" required placeholder="T.ex. Sköldpadda"></div>
+                <div class="col-md-6"><label class="form-label fw-bold">Betydelse</label><input type="text" name="questions_pair[${pairCount}][def]" class="form-control" required placeholder="T.ex. Djur"></div>
+            </div>
+        </div>`;
+        container.insertAdjacentHTML('beforeend', html);
+    }
+
+    // --- TEXTLUCKOR (NYTT!) ---
+    let gapCount = 0;
+    function addGapField() {
+        gapCount++;
+        const container = document.getElementById('gaps-container');
+        const html = `
+        <div class="border p-3 mb-3 rounded bg-light position-relative" id="gap-row-${gapCount}">
+            <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()"></button>
+            <div class="row">
+                <div class="col-md-8">
+                    <label class="form-label fw-bold">Mening med lucka</label>
+                    <input type="text" name="questions_gaps[${gapCount}][sentence]" class="form-control" required placeholder="T.ex. Katten sitter på ___">
                 </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">Betydelse (Höger sida)</label>
-                    <input type="text" name="questions_pair[${pairCount}][def]" class="form-control" required placeholder="T.ex. Djuret som Sara valde">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Rätt ord (Luckan)</label>
+                    <input type="text" name="questions_gaps[${gapCount}][word]" class="form-control border-success" required placeholder="T.ex. mattan">
                 </div>
             </div>
         </div>`;
         container.insertAdjacentHTML('beforeend', html);
     }
 
-    // --- JS: BYT FORMULÄR ---
+    // --- BYT FORMULÄR ---
     const dropdown = document.getElementById('taskTypeDropdown');
     const forms = document.querySelectorAll('.task-form-section');
     
@@ -278,7 +329,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
         if (selectedText.includes('flerval')) { activeFormId = 'form-flerval'; } 
         else if (selectedText.includes('sant/falskt')) { activeFormId = 'form-sant-falskt'; } 
         else if (selectedText.includes('sortering')) { activeFormId = 'form-sortering'; }
-        else if (selectedText.includes('para ihop')) { activeFormId = 'form-paraihop'; } // <-- NYTT
+        else if (selectedText.includes('para ihop')) { activeFormId = 'form-paraihop'; }
+        else if (selectedText.includes('textluckor')) { activeFormId = 'form-textluckor'; } // <-- NYTT
 
         if (activeFormId) {
             const activeForm = document.getElementById(activeFormId);
@@ -286,8 +338,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
             activeForm.querySelectorAll('input, textarea, select').forEach(input => {
                 input.disabled = false;
                 const name = input.name;
-                // Enkel koll för required
-                if (name.includes('[question]') || name.includes('[correct]') || name.includes('[term]') || name.includes('[def]') || name.includes('[sentences]')) {
+                if (name.includes('[question]') || name.includes('[correct]') || name.includes('[term]') || name.includes('[def]') || name.includes('[sentences]') || name.includes('[sentence]') || name.includes('[word]')) {
                     input.required = true;
                 }
             });
@@ -301,7 +352,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
         const selectedText = dropdown.options[dropdown.selectedIndex].text.toLowerCase();
         if (selectedText.includes('flerval')) { addQuestionField(); } 
         else if (selectedText.includes('sant/falskt')) { addTrueFalseField(); }
-        else if (selectedText.includes('para ihop')) { addPairField(); } // <-- NYTT
+        else if (selectedText.includes('para ihop')) { addPairField(); }
+        else if (selectedText.includes('textluckor')) { addGapField(); } // <-- NYTT
     }
     
     window.onload = initForms;
