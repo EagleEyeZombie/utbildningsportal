@@ -151,3 +151,4 @@ $specialProgressData = $task_obj->getSpecialBadgeProgress($userId);
 </div>
 
 <?php require_once "include/footer.php"; ?>
+
