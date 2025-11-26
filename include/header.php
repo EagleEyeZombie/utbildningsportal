@@ -4,6 +4,18 @@ require_once "include/class_task.php";
 require_once "include/config.php";
 require_once "include/functions.php";
 
+// --- LOGIK FÖR TEMA (BAKGRUND) ---
+// Vi vill att dashboard.php och task_view.php ALLTID ska ha spel-bakgrunden,
+// även om det är en admin som besöker dem.
+$current_page = basename($_SERVER['PHP_SELF']);
+$game_pages = ['dashboard.php', 'task_view.php']; // Sidor som ska se ut som spelet
+
+$body_class = 'student-page-background'; // Standard (Elev)
+
+// Om man är admin OCH inte är på en spelsida, då kör vi admin-temat (vitt)
+if (isset($_SESSION['role_level']) && $_SESSION['role_level'] >= 5 && !in_array($current_page, $game_pages)) {
+    $body_class = 'admin-mode';
+}
 ?>
 <!DOCTYPE html>
 <html lang="sv">
@@ -12,28 +24,21 @@ require_once "include/functions.php";
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Utbildningsportal</title>
     
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     
-    <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
     
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     
-    <!-- Custom JS -->
     <script src="js/script.js"></script>
 
-    <!-- VIKTIGT: SortableJS för Sorteringsövningar (Denna rad saknades!) -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     
-    <!-- Fix för favicon -->
     <link rel="icon" href="data:,">
 </head>
-<body class="<?php echo (isset($_SESSION['role_level']) && $_SESSION['role_level'] >= 5) ? 'admin-mode' : 'student-page-background'; ?>">
+<body class="<?php echo $body_class; ?>">
 
 <nav class="navbar navbar-expand-lg navbar-dark">
   <div class="container-fluid">
@@ -46,17 +51,13 @@ require_once "include/functions.php";
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-center">
         
-        <li class="nav-item">
-          <a class="nav-link" href="index.php">Start</a>
-        </li>
-
         <?php if (isset($_SESSION['user_id'])): ?>
-            <!-- OM INLOGGAD -->
-            
             <?php if (isset($_SESSION['role_level'])): ?>
                 
-                <!-- ADMIN (Level 10) -->
                 <?php if ($_SESSION['role_level'] >= 10): ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard.php" style="color: var(--accent-gold) !important;"><i class="bi bi-joystick"></i> Mina Äventyr</a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="register.php"><i class="bi bi-person-plus"></i> Lägg till användare</a>
                     </li>
@@ -64,8 +65,10 @@ require_once "include/functions.php";
                         <a class="nav-link" href="admin_dashboard.php"><i class="bi bi-shield-lock"></i> Adminpanel</a>
                     </li>
                 
-                <!-- LÄRARE (Level 5) -->
                 <?php elseif ($_SESSION['role_level'] == 5): ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard.php" style="color: var(--accent-gold) !important;"><i class="bi bi-joystick"></i> Mina Äventyr</a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="register.php"><i class="bi bi-person-plus"></i> Lägg till elev</a>
                     </li>
@@ -73,7 +76,6 @@ require_once "include/functions.php";
                         <a class="nav-link" href="admin_dashboard.php"><i class="bi bi-shield-lock"></i> Adminpanel</a>
                     </li>
                 
-                <!-- ELEV (Level 1) -->
                 <?php else: ?>
                     <li class="nav-item">
                         <a class="nav-link" href="dashboard.php"><i class="bi bi-map"></i> Mina Äventyr</a>
@@ -82,7 +84,6 @@ require_once "include/functions.php";
                 
             <?php endif; ?>
 
-            <!-- GEMENSAMT FÖR ALLA -->
             <li class="nav-item ms-2">
                 <span class="navbar-text text-light me-2">
                     <small>Inloggad som:</small> <strong><?= htmlspecialchars($_SESSION['username']) ?></strong>
@@ -94,7 +95,6 @@ require_once "include/functions.php";
             </li>
 
         <?php else: ?>
-            <!-- OM INTE INLOGGAD -->
             <li class="nav-item">
                 <a class="nav-link" href="login.php">Logga in</a>
             </li>

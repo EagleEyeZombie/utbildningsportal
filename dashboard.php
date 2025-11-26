@@ -6,10 +6,7 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
-if ($_SESSION['role_level'] >= 5) {
-    header("Location: admin_dashboard.php");
-    exit;
-}
+
 // ---------------------
 
 // --- FILTERLOGIK ---
