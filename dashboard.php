@@ -6,7 +6,7 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
-
+// Vi tillåter nu admins (level 5+) att vara här för att testa spelet!
 // ---------------------
 
 // --- FILTERLOGIK ---
@@ -56,7 +56,7 @@ function buildUrl($params) {
                     </h2>
                 </div>
 
-<div class="hero-right pe-lg-3 text-lg-end text-center" style="min-width: 150px;">
+                <div class="hero-right pe-lg-3 text-lg-end text-center" style="min-width: 150px;">
                     
                     <a href="badges.php" class="text-decoration-none">
                         <div class="small mb-1 text-uppercase fw-bold badge-link-hover" style="color: var(--accent-gold); letter-spacing: 1px; font-size: 0.8rem;">
@@ -70,7 +70,14 @@ function buildUrl($params) {
                             $displayBadges = array_slice($myBadges, 0, 4); 
                             foreach ($displayBadges as $badge): 
                             ?>
-                                <div class="mini-badge" title="<?= htmlspecialchars($badge['a_name']) ?>" data-bs-toggle="tooltip">
+                                <div class="mini-badge" 
+                                     role="button" 
+                                     tabindex="0" 
+                                     data-bs-toggle="popover" 
+                                     data-bs-trigger="focus" 
+                                     data-bs-placement="bottom" 
+                                     title="<?= htmlspecialchars($badge['a_name']) ?>" 
+                                     data-bs-content="<?= htmlspecialchars($badge['a_description']) ?>">
                                     <i class="bi <?= htmlspecialchars($badge['a_icon']) ?> fs-5 text-warning"></i>
                                 </div>
                             <?php endforeach; ?>
@@ -235,5 +242,7 @@ function buildUrl($params) {
     </div>
     <?php endif; ?>
 </div>
+
+
 
 <?php require_once "include/footer.php"; ?>

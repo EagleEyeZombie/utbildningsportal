@@ -611,3 +611,37 @@ body:not(.admin-mode) .table tbody td {
   color: #fff !important;
   text-shadow: 0 0 5px var(--accent-gold);
 }
+
+/* -------------------------------------------------------------------------- */
+/* POPOVER STYLING (Mörk Design)                                      */
+/* -------------------------------------------------------------------------- */
+
+.popover {
+  background-color: rgba(50, 55, 65, 0.98); /* Mörk bakgrund */
+  border: 2px solid var(--accent-gold);
+  color: var(--text-white);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+}
+
+.popover-header {
+  background-color: rgba(0, 0, 0, 0.3);
+  color: var(--accent-gold);
+  font-family: "Cinzel Decorative", serif;
+  font-weight: 700;
+  border-bottom: 1px solid var(--border-thick);
+  text-shadow: 1px 1px 2px #000;
+}
+
+.popover-body {
+  color: #fff; /* Kritvit text för läsbarhet */
+  font-family: "Exo 2", sans-serif;
+  font-size: 0.95rem;
+}
+
+/* Pilen (Triangeln) - Matchar guldkanten och mörka bakgrunden */
+.bs-popover-top > .popover-arrow::after {
+  border-top-color: rgba(50, 55, 65, 0.98);
+}
+.bs-popover-bottom > .popover-arrow::after {
+  border-bottom-color: rgba(50, 55, 65, 0.98);
+}
