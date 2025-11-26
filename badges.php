@@ -9,15 +9,13 @@ if (!isset($_SESSION['user_id'])) {
 
 $userId = $_SESSION['user_id'];
 
-// 1. Hämta användarens nuvarande XP
-// Vi hämtar färska poäng från databasen ifall sessionen släpar efter
+// 1. Hämta XP
 $stmt = $pdo->prepare("SELECT u_xp FROM users WHERE u_id = ?");
 $stmt->execute([$userId]);
 $user = $stmt->fetch();
 $currentXP = $user['u_xp'] ?? 0;
 
-// 2. Hämta ALLA achievements + info om användaren har dem
-// Vi gör en LEFT JOIN för att se om det finns en matchning i student_achievements
+// 2. Hämta ALLA achievements
 $sql = "SELECT a.*, sa.sa_date_earned 
         FROM achievements a 
         LEFT JOIN student_achievements sa 
@@ -27,6 +25,9 @@ $sql = "SELECT a.*, sa.sa_date_earned
 $stmt = $pdo->prepare($sql);
 $stmt->execute([$userId]);
 $allBadges = $stmt->fetchAll();
+
+// 3. NYTT: Hämta framstegsdata för special-badges
+$specialProgressData = $task_obj->getSpecialBadgeProgress($userId);
 
 ?>
 
@@ -38,7 +39,7 @@ $allBadges = $stmt->fetchAll();
                 Dina Utmärkelser
             </h1>
             <p class="text-white lead" style="text-shadow: 1px 1px 2px #000;">
-                Samla XP för att låsa upp nya titlar och emblem!
+                Samla XP och klara utmaningar för att låsa upp emblem!
             </p>
             <div class="badge bg-dark border border-warning p-2 fs-6">
                 Din totala XP: <span style="color: var(--accent-gold);"><?php echo $currentXP; ?></span>
@@ -50,16 +51,44 @@ $allBadges = $stmt->fetchAll();
         <?php foreach ($allBadges as $badge): 
             $isUnlocked = !empty($badge['sa_date_earned']);
             $xpReq = $badge['a_xp_required'];
+            $badgeName = $badge['a_name'];
             
-            // Beräkna progress (0 till 100%)
-            // Om kravet är 0 XP (startbadge) och man inte har den (teoretiskt), är progress 0.
-            // Annars räknar vi procent.
+            // Är det en special-badge? (Krav över 90000)
+            $isSpecial = ($xpReq >= 90000);
+
+            // Förbered variabler för progress bar
+            $currentVal = 0;
+            $targetVal = 0;
             $percent = 0;
+            $label = "XP";
+
             if ($isUnlocked) {
                 $percent = 100;
-            } elseif ($xpReq > 0) {
-                $percent = ($currentXP / $xpReq) * 100;
-                if ($percent > 100) $percent = 100; // Tak på 100% även om man inte fått badgen än (buggsäkring)
+            } else {
+                if ($isSpecial) {
+                    // Hämta data från vår nya funktion
+                    if (isset($specialProgressData[$badgeName])) {
+                        $data = $specialProgressData[$badgeName];
+                        $currentVal = $data['current'];
+                        $targetVal = $data['target'];
+                        $label = $data['label'];
+                        
+                        if ($targetVal > 0) {
+                            $percent = ($currentVal / $targetVal) * 100;
+                        }
+                    }
+                } else {
+                    // Vanlig XP-badge
+                    $currentVal = floor($currentXP);
+                    $targetVal = $xpReq;
+                    $label = "XP";
+                    
+                    if ($xpReq > 0) {
+                        $percent = ($currentXP / $xpReq) * 100;
+                    }
+                }
+                // Säkra att procenten inte går över 100
+                if ($percent > 100) $percent = 100;
             }
         ?>
             <div class="col-md-6 col-lg-4 mb-4">
@@ -83,10 +112,11 @@ $allBadges = $stmt->fetchAll();
                                 <i class="bi bi-check-circle-fill"></i> Upplåst <?php echo date('Y-m-d', strtotime($badge['sa_date_earned'])); ?>
                             </div>
                         <?php else: ?>
+                            
                             <div class="progress-wrapper mt-3">
                                 <div class="d-flex justify-content-between text-white-50 small mb-1">
                                     <span>Framsteg</span>
-                                    <span><?php echo floor($currentXP); ?> / <?php echo $xpReq; ?> XP</span>
+                                    <span><?php echo $currentVal; ?> / <?php echo $targetVal; ?> <?php echo $label; ?></span>
                                 </div>
                                 <div class="progress" style="height: 10px; background-color: rgba(255,255,255,0.1);">
                                     <div class="progress-bar bg-warning" role="progressbar" 
@@ -94,12 +124,14 @@ $allBadges = $stmt->fetchAll();
                                          aria-valuenow="<?php echo $percent; ?>" aria-valuemin="0" aria-valuemax="100">
                                     </div>
                                 </div>
+                                
                                 <?php if ($percent >= 100): ?>
                                     <small class="text-warning d-block mt-2">Redo att låsas upp!</small>
                                 <?php else: ?>
                                     <small class="text-muted d-block mt-2"><i class="bi bi-lock-fill"></i> Låst</small>
                                 <?php endif; ?>
                             </div>
+
                         <?php endif; ?>
 
                     </div>

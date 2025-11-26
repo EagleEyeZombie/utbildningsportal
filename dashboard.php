@@ -9,8 +9,25 @@ if (!isset($_SESSION['user_id'])) {
 // Vi tillåter nu admins (level 5+) att vara här för att testa spelet!
 // ---------------------
 
-// --- FILTERLOGIK ---
 $studentId = $_SESSION['user_id'];
+
+// --- NYTT: UPPDATERA DATA & KOLLA BADGES ---
+// Eftersom vi nollställde databasen manuellt måste vi se till att sessionen 
+// är synkad och att "Nykomling"-badgen delas ut direkt vid sidvisning.
+$stmt = $pdo->prepare("SELECT u_xp, u_level FROM users WHERE u_id = ?");
+$stmt->execute([$studentId]);
+$freshUser = $stmt->fetch();
+
+if ($freshUser) {
+    $_SESSION['user_xp'] = $freshUser['u_xp'];
+    $_SESSION['user_level'] = $freshUser['u_level'];
+    
+    // Kör en kontroll direkt! Detta ger "Nykomling" (0 XP) omedelbart.
+    $task_obj->checkAchievements($studentId, $_SESSION['user_xp']);
+}
+// -------------------------------------------
+
+// --- FILTERLOGIK ---
 $filterTypeId = isset($_GET['type']) && $_GET['type'] !== '' ? (int)$_GET['type'] : null;
 $filterGenreId = isset($_GET['genre']) && $_GET['genre'] !== '' ? (int)$_GET['genre'] : null;
 $viewAllLevels = isset($_GET['view']) && $_GET['view'] === 'all';
@@ -26,6 +43,7 @@ if ($shouldShowTasks) {
     $allTasks = $task_obj->getTasksForStudent($studentId, $filterTypeId, $filterGenreId);
 }
 
+// Hämta badges (Nu kommer Nykomling finnas med!)
 $myBadges = $task_obj->getStudentBadges($studentId);
 
 function buildUrl($params) {
@@ -42,11 +60,11 @@ function buildUrl($params) {
                 <div class="hero-left d-flex flex-column gap-2 ps-lg-3 text-lg-start text-center">
                     <div class="hero-stat">
                         <i class="bi bi-star-fill text-warning"></i> 
-                        <span>Poäng: <strong><?php echo isset($_SESSION['user_xp']) ? $_SESSION['user_xp'] : 0; ?> XP</strong></span>
+                        <span>XP: <strong><?php echo isset($_SESSION['user_xp']) ? $_SESSION['user_xp'] : 0; ?></strong></span>
                     </div>
                     <div class="hero-stat">
                         <i class="bi bi-trophy-fill text-warning"></i> 
-                        <span>Nivå: Level <strong><?php echo isset($_SESSION['user_level']) ? $_SESSION['user_level'] : 1; ?></strong></span>
+                        <span>Nivå: <strong><?php echo isset($_SESSION['user_level']) ? $_SESSION['user_level'] : 1; ?></strong></span>
                     </div>
                 </div>
 
@@ -242,7 +260,5 @@ function buildUrl($params) {
     </div>
     <?php endif; ?>
 </div>
-
-
 
 <?php require_once "include/footer.php"; ?>

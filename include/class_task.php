@@ -221,25 +221,148 @@ class Task {
 
     // --- GAMIFICATION (BADGES) ---
 
+    // --- GAMIFICATION (BADGES) - NY UPPGRADERING ---
+
     public function checkAchievements($studentId, $currentXp) {
+        $newBadges = [];
+
         try {
-            $sql = "SELECT * FROM achievements 
-                    WHERE a_xp_required <= ? 
-                    AND a_id NOT IN (
-                        SELECT sa_achievement_fk FROM student_achievements WHERE sa_student_fk = ?
-                    )";
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([$currentXp, $studentId]);
-            $newBadges = $stmt->fetchAll();
-            if ($newBadges) {
-                foreach ($newBadges as $badge) {
-                    $insert = $this->pdo->prepare("INSERT INTO student_achievements (sa_student_fk, sa_achievement_fk) VALUES (?, ?)");
-                    $insert->execute([$studentId, $badge['a_id']]);
+            // 1. Hämta alla badges som studenten REDAN har (för att slippa dubbletter)
+            $stmt = $this->pdo->prepare("SELECT sa_achievement_fk FROM student_achievements WHERE sa_student_fk = ?");
+            $stmt->execute([$studentId]);
+            $myBadges = $stmt->fetchAll(PDO::FETCH_COLUMN); // En enkel lista med ID:n
+
+            // ---------------------------------------------------
+            // KATEGORI 1: XP-BASERADE BADGES (Bokmal, Mästare etc)
+            // ---------------------------------------------------
+            // Vi hämtar alla badges som kräver XP, men som inte är "special-badges" (ID < 90000)
+            $stmt = $this->pdo->prepare("SELECT * FROM achievements WHERE a_xp_required <= ? AND a_xp_required < 90000");
+            $stmt->execute([$currentXp]);
+            $xpBadges = $stmt->fetchAll();
+
+            foreach ($xpBadges as $badge) {
+                if (!in_array($badge['a_id'], $myBadges)) {
+                    $this->awardBadge($studentId, $badge['a_id']);
+                    $newBadges[] = $badge;
+                    $myBadges[] = $badge['a_id']; // Lägg till i listan så vi vet att vi har den
                 }
-                return $newBadges;
             }
-            return [];
+
+            // ---------------------------------------------------
+            // KATEGORI 2: SPELSÄTT (Klara Nivå 10 i en viss typ)
+            // ---------------------------------------------------
+            // Mappning: Namn i DB => Typ-ID (Kolla i task_types tabellen om ID stämmer!)
+            $typeMapping = [
+                'Quizmästaren' => 1, // Flervalsfrågor
+                'Ordningsvakten' => 2, // Sortering
+                'Pusselbiten' => 3, // Para ihop
+                'Sanningssägaren' => 4, // Sant/Falskt
+                'Ordgeniet' => 5  // Textluckor
+            ];
+
+            foreach ($typeMapping as $badgeName => $typeId) {
+                // Kolla om badge redan finns
+                $badgeId = $this->getBadgeIdByName($badgeName);
+                if ($badgeId && !in_array($badgeId, $myBadges)) {
+                    // Har studenten klarat en uppgift på nivå 10 av denna typ?
+                    if ($this->hasCompletedTaskAtLevel($studentId, 10, 'type', $typeId)) {
+                        $this->awardBadge($studentId, $badgeId);
+                        $newBadges[] = ['a_name' => $badgeName]; // För display
+                    }
+                }
+            }
+
+            // ---------------------------------------------------
+            // KATEGORI 3: GENRES (Klara Nivå 10 i en viss genre)
+            // ---------------------------------------------------
+            // Mappning: Namn i DB => Genre-ID
+            $genreMapping = [
+                'Drakryttaren' => 1, // Fantasy
+                'Astronauten' => 2, // Sci-Fi
+                'Detektiven' => 3, // Deckare
+                'Spökjägaren' => 4, // Skräck
+                'Professorn' => 5  // Fakta
+            ];
+
+            foreach ($genreMapping as $badgeName => $genreId) {
+                $badgeId = $this->getBadgeIdByName($badgeName);
+                if ($badgeId && !in_array($badgeId, $myBadges)) {
+                    if ($this->hasCompletedTaskAtLevel($studentId, 10, 'genre', $genreId)) {
+                        $this->awardBadge($studentId, $badgeId);
+                        $newBadges[] = ['a_name' => $badgeName];
+                    }
+                }
+            }
+
+            // ---------------------------------------------------
+            // KATEGORI 4: MÄNGDTRÄNING (Klara X antal på Nivå Y)
+            // ---------------------------------------------------
+            // Format: BadgeNamn => [Nivå, Antal]
+            $grindMapping = [
+                'Nyfiken Start' => [1, 5],
+                'Uppvärmd' => [1, 10],
+                'På God Väg' => [5, 5],
+                'Erfaren' => [5, 10],
+                'Eliten' => [10, 5],
+                'Omöjlig' => [10, 10]
+            ];
+
+            foreach ($grindMapping as $badgeName => $req) {
+                $level = $req[0];
+                $countReq = $req[1];
+                
+                $badgeId = $this->getBadgeIdByName($badgeName);
+                if ($badgeId && !in_array($badgeId, $myBadges)) {
+                    // Räkna antal klarade uppgifter på denna nivå
+                    $count = $this->countCompletedTasksAtLevel($studentId, $level);
+                    if ($count >= $countReq) {
+                        $this->awardBadge($studentId, $badgeId);
+                        $newBadges[] = ['a_name' => $badgeName];
+                    }
+                }
+            }
+
+            return $newBadges;
+
         } catch (PDOException $e) { return []; }
+    }
+
+    // --- HJÄLPFUNKTIONER FÖR BADGES ---
+
+    private function awardBadge($studentId, $badgeId) {
+        $stmt = $this->pdo->prepare("INSERT INTO student_achievements (sa_student_fk, sa_achievement_fk) VALUES (?, ?)");
+        $stmt->execute([$studentId, $badgeId]);
+    }
+
+    private function getBadgeIdByName($name) {
+        $stmt = $this->pdo->prepare("SELECT a_id FROM achievements WHERE a_name = ?");
+        $stmt->execute([$name]);
+        return $stmt->fetchColumn();
+    }
+
+    private function hasCompletedTaskAtLevel($studentId, $level, $filterType, $filterId) {
+        // Kollar om det finns MINST EN klarad uppgift (st_completed=1) på given nivå och typ/genre
+        $sql = "SELECT COUNT(*) FROM student_tasks st
+                JOIN tasks t ON st.st_t_id_fk = t.t_id
+                JOIN task_levels tl ON t.t_level_fk = tl.tl_id
+                WHERE st.st_s_id_fk = ? AND st.st_completed = 1 AND tl.tl_level = ?";
+        
+        if ($filterType == 'type') $sql .= " AND t.t_type_fk = ?";
+        if ($filterType == 'genre') $sql .= " AND t.t_genre_fk = ?";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$studentId, $level, $filterId]);
+        return $stmt->fetchColumn() > 0;
+    }
+
+    private function countCompletedTasksAtLevel($studentId, $level) {
+        $sql = "SELECT COUNT(*) FROM student_tasks st
+                JOIN tasks t ON st.st_t_id_fk = t.t_id
+                JOIN task_levels tl ON t.t_level_fk = tl.tl_id
+                WHERE st.st_s_id_fk = ? AND st.st_completed = 1 AND tl.tl_level = ?";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$studentId, $level]);
+        return $stmt->fetchColumn();
     }
 
     public function getStudentBadges($studentId) {
@@ -253,6 +376,96 @@ class Task {
             $stmt->execute([$studentId]);
             return $stmt->fetchAll();
         } catch (PDOException $e) { return []; }
+    }
+
+    // --- NYTT: RÄKNA FRAMSTEG FÖR SPECIAL-BADGES ---
+    public function getSpecialBadgeProgress($studentId) {
+        $progressData = [];
+
+        // 1. KATEGORI: SPELSÄTT (Mål: Nivå 10)
+        $typeMapping = [
+            'Quizmästaren' => 1, 
+            'Ordningsvakten' => 2, 
+            'Pusselbiten' => 3, 
+            'Sanningssägaren' => 4, 
+            'Ordgeniet' => 5
+        ];
+
+        foreach ($typeMapping as $badgeName => $typeId) {
+            // Hämta högsta klarade nivå för denna typ
+            $sql = "SELECT MAX(tl.tl_level) FROM student_tasks st
+                    JOIN tasks t ON st.st_t_id_fk = t.t_id
+                    JOIN task_levels tl ON t.t_level_fk = tl.tl_id
+                    WHERE st.st_s_id_fk = ? AND st.st_completed = 1 AND t.t_type_fk = ?";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([$studentId, $typeId]);
+            $currentLevel = $stmt->fetchColumn() ?: 0; // 0 om inget klarat
+
+            $progressData[$badgeName] = [
+                'current' => $currentLevel,
+                'target' => 10,
+                'label' => 'Nivå'
+            ];
+        }
+
+        // 2. KATEGORI: GENRES (Mål: Nivå 10)
+        $genreMapping = [
+            'Drakryttaren' => 1, 
+            'Astronauten' => 2, 
+            'Detektiven' => 3, 
+            'Spökjägaren' => 4, 
+            'Professorn' => 5
+        ];
+
+        foreach ($genreMapping as $badgeName => $genreId) {
+            $sql = "SELECT MAX(tl.tl_level) FROM student_tasks st
+                    JOIN tasks t ON st.st_t_id_fk = t.t_id
+                    JOIN task_levels tl ON t.t_level_fk = tl.tl_id
+                    WHERE st.st_s_id_fk = ? AND st.st_completed = 1 AND t.t_genre_fk = ?";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([$studentId, $genreId]);
+            $currentLevel = $stmt->fetchColumn() ?: 0;
+
+            $progressData[$badgeName] = [
+                'current' => $currentLevel,
+                'target' => 10,
+                'label' => 'Nivå'
+            ];
+        }
+
+        // 3. KATEGORI: MÄNGD (Mål: Antal uppgifter)
+        $grindMapping = [
+            'Nyfiken Start' => [1, 5],
+            'Uppvärmd' => [1, 10],
+            'På God Väg' => [5, 5],
+            'Erfaren' => [5, 10],
+            'Eliten' => [10, 5],
+            'Omöjlig' => [10, 10]
+        ];
+
+        foreach ($grindMapping as $badgeName => $req) {
+            $level = $req[0];
+            $targetCount = $req[1];
+
+            $sql = "SELECT COUNT(*) FROM student_tasks st
+                    JOIN tasks t ON st.st_t_id_fk = t.t_id
+                    JOIN task_levels tl ON t.t_level_fk = tl.tl_id
+                    WHERE st.st_s_id_fk = ? AND st.st_completed = 1 AND tl.tl_level = ?";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([$studentId, $level]);
+            $count = $stmt->fetchColumn();
+
+            // Tak på count så det inte ser ut som 15/10
+            if ($count > $targetCount) $count = $targetCount;
+
+            $progressData[$badgeName] = [
+                'current' => $count,
+                'target' => $targetCount,
+                'label' => 'Uppdrag'
+            ];
+        }
+
+        return $progressData;
     }
 }
 ?>
