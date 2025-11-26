@@ -36,133 +36,116 @@ function buildUrl($params) {
 }
 ?>
 
-<div class="container mt-4"> <!-- Lite mindre toppmarginal -->
+<div class="container mt-4">
     
-    <!-- 1. VÄLKOMSTPANEL (HERO) -->
-    <div class="row mb-4">
+    <div class="row mb-3">
         <div class="col-md-12">
-            <div class="p-4 dashboard-hero rounded-3"> <!-- Lite mindre padding -->
-                <h1 class="display-5 fw-bold">Välkommen, <?php echo htmlspecialchars($_SESSION['username']); ?>!</h1>
-                <p class="fs-4 lead mb-0">Redo för nya utmaningar idag?</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- 2. STATISTIK & BADGES (NY LAYOUT) -->
-    <div class="row mb-4">
-        
-        <!-- VÄNSTER KOLUMN: POÄNG & NIVÅ (STAPLADE) -->
-        <div class="col-md-4 d-flex flex-column gap-3">
-            
-            <!-- Poäng Kort -->
-            <div class="card text-center shadow-sm flex-fill">
-                <div class="card-header py-2">Dina Poäng</div>
-                <div class="card-body p-3 d-flex align-items-center justify-content-center">
-                    <p class="card-text display-5 text-white fw-bold mb-0">
-                        <?php echo isset($_SESSION['user_xp']) ? $_SESSION['user_xp'] : 0; ?> XP
-                    </p>
+            <div class="p-3 dashboard-hero rounded-3 d-flex flex-column flex-lg-row align-items-center justify-content-between gap-3">
+                
+                <div class="hero-left d-flex flex-column gap-2 ps-lg-3 text-lg-start text-center">
+                    <div class="hero-stat">
+                        <i class="bi bi-star-fill text-warning"></i> 
+                        <span>Poäng: <strong><?php echo isset($_SESSION['user_xp']) ? $_SESSION['user_xp'] : 0; ?> XP</strong></span>
+                    </div>
+                    <div class="hero-stat">
+                        <i class="bi bi-trophy-fill text-warning"></i> 
+                        <span>Nivå: Level <strong><?php echo isset($_SESSION['user_level']) ? $_SESSION['user_level'] : 1; ?></strong></span>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Nivå Kort -->
-            <div class="card text-center shadow-sm flex-fill">
-                <div class="card-header py-2">Din Nivå</div>
-                <div class="card-body p-3 d-flex align-items-center justify-content-center">
-                    <p class="card-text display-5 text-white fw-bold mb-0">
-                        Nivå <?php echo isset($_SESSION['user_level']) ? $_SESSION['user_level'] : 1; ?>
-                    </p>
+                <div class="hero-center text-center flex-grow-1">
+                    <h2 class="fw-bold mb-0" style="font-family: 'Cinzel Decorative', serif; color: var(--accent-gold); text-shadow: 2px 2px 0 #000; font-size: 1.8rem;">
+                        Välkommen, <?php echo htmlspecialchars($_SESSION['username']); ?>!
+                    </h2>
                 </div>
-            </div>
 
-        </div>
-
-        <!-- HÖGER KOLUMN: BADGES -->
-        <div class="col-md-8">
-            <div class="card text-center shadow-sm h-100"> <!-- h-100 för att fylla höjden -->
-                <div class="card-header">Dina Utmärkelser</div>
-                <div class="card-body p-4">
+                <div class="hero-right pe-lg-3 text-lg-end text-center" style="min-width: 150px;">
+                    <div class="small mb-1 text-uppercase fw-bold" style="color: var(--accent-gold); letter-spacing: 1px; font-size: 0.8rem;">Mina badges</div>
                     <?php if (!empty($myBadges)): ?>
-                        <div class="d-flex flex-wrap justify-content-center gap-3">
+                        <div class="d-flex flex-wrap justify-content-center justify-content-lg-end gap-1">
                             <?php foreach ($myBadges as $badge): ?>
-                                <!-- UPPDATERAT: Lade till title-attributet här -->
-                                <div class="badge-item p-2 text-center" title="<?= htmlspecialchars($badge['a_description']) ?>" style="cursor: help;">
-                                    <i class="bi <?= htmlspecialchars($badge['a_icon']) ?> display-4 text-warning" style="text-shadow: 1px 1px 2px #000;"></i>
-                                    <div class="mt-1 fw-bold text-white"><?= htmlspecialchars($badge['a_name']) ?></div>
+                                <div class="mini-badge" title="<?= htmlspecialchars($badge['a_name']) ?>" data-bs-toggle="tooltip">
+                                    <i class="bi <?= htmlspecialchars($badge['a_icon']) ?> fs-5 text-warning"></i>
                                 </div>
                             <?php endforeach; ?>
                         </div>
                     <?php else: ?>
-                        <div class="h-100 d-flex flex-column justify-content-center align-items-center text-muted">
-                            <i class="bi bi-award display-4 mb-2 opacity-50"></i>
-                            <p>Du har inga utmärkelser än. Gör uppgifter för att samla dem!</p>
-                        </div>
+                        <div class="text-white-50 small fst-italic">Inga badges än...</div>
                     <?php endif; ?>
                 </div>
+
             </div>
         </div>
-
     </div>
-    <!-- SLUT STATISTIK & BADGES -->
 
+    <div class="filter-section pt-3 pb-3 mb-4">
+        
+        <div class="row align-items-center mb-2">
+            
+            <div class="col-6 col-md-3 order-2 order-md-1 text-md-start text-center mt-2 mt-md-0">
+                <?php if ($viewAllLevels): ?>
+                    <a href="<?= buildUrl(['view' => 'focus']) ?>" class="btn btn-filter btn-sm" style="border-color: #fff; min-width: 100px;">
+                        <i class="bi bi-eye-slash"></i> Dölj låsta
+                    </a>
+                <?php else: ?>
+                    <a href="<?= buildUrl(['view' => 'all']) ?>" class="btn btn-filter btn-sm" style="background-color: var(--accent-gold); color: #2c2c2c; border-color: #fff; min-width: 100px;">
+                        <i class="bi bi-eye"></i> Visa allt!
+                    </a>
+                <?php endif; ?>
+            </div>
 
-    <!-- 3. FILTERSEKTION (RUBRIK INUTI) -->
-    <div class="filter-section text-center pt-4 pb-4 mb-0">
-        
-        <!-- Rubriken flyttad hit in -->
-        <h3 class="mb-4 text-white" style="text-shadow: 2px 2px 4px #000; font-family: 'Cinzel Decorative', serif;">Välj Ditt Äventyr</h3>
-        
-        
+            <div class="col-12 col-md-6 order-1 order-md-2 text-center">
+                <h3 class="m-0" style="color: var(--accent-gold); font-family: 'Cinzel Decorative', serif; text-shadow: 2px 2px 2px #000; font-size: 1.8rem;">
+                    Välj din väg!
+                </h3>
+                <div class="text-white mt-1" style="font-size: 1.1rem; text-shadow: 1px 1px 1px #000;">
+                    Klicka på knappar nedan för att filtrera.
+                </div>
+            </div>
 
-        <div class="row justify-content-center">
-            <!-- Spelsätt -->
-            <div class="col-md-6 mb-3">
-                <span class="filter-label">Välj Spelsätt</span>
-                <div class="d-flex flex-wrap justify-content-center">
+            <div class="col-6 col-md-3 order-3 order-md-3 text-md-end text-center mt-2 mt-md-0">
+                <a href="dashboard.php" class="btn btn-filter btn-sm <?php echo (!$hasActiveFilter && !$viewAllLevels) ? 'btn-filter-active' : ''; ?>" style="min-width: 100px;">
+                    <i class="bi bi-x-circle"></i> Rensa
+                </a>
+            </div>
+
+        </div>
+
+        <hr class="border-secondary mb-3 mt-1">
+
+        <div class="row">
+            
+            <div class="col-md-6 mb-2 border-end-md border-secondary">
+                <div class="d-flex align-items-center mb-2 justify-content-center justify-content-md-start">
+                    <span class="text-white text-uppercase fw-bold me-2" style="font-size: 1.2rem;">Spelsätt:</span>
+                </div>
+                <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-start">
                     <?php foreach ($allTypes as $type): ?>
                         <a href="<?= buildUrl(['type' => $type['tt_id']]) ?>" 
-                           class="btn btn-filter <?php echo ($filterTypeId === $type['tt_id']) ? 'btn-filter-active' : ''; ?>">
+                           class="btn btn-filter btn-sm <?php echo ($filterTypeId === $type['tt_id']) ? 'btn-filter-active' : ''; ?>"> 
                             <?= htmlspecialchars($type['tt_name']) ?>
                         </a>
                     <?php endforeach; ?>
                 </div>
             </div>
-
-            <!-- Tema -->
-            <div class="col-md-6 mb-3">
-                <span class="filter-label">Välj Tema</span>
-                <div class="d-flex flex-wrap justify-content-center">
+            
+            <div class="col-md-6 mb-2 ps-md-4">
+                <div class="d-flex align-items-center mb-2 justify-content-center justify-content-md-start">
+                    <span class="text-white text-uppercase fw-bold me-2" style="font-size: 1.2rem;">Genre:</span>
+                </div>
+                <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-start">
                     <?php foreach ($allGenres as $genre): ?>
                         <a href="<?= buildUrl(['genre' => $genre['g_id']]) ?>" 
-                           class="btn btn-filter <?php echo ($filterGenreId === $genre['g_id']) ? 'btn-filter-active' : ''; ?>">
+                           class="btn btn-filter btn-sm <?php echo ($filterGenreId === $genre['g_id']) ? 'btn-filter-active' : ''; ?>">
                             <?= htmlspecialchars($genre['g_name']) ?>
                         </a>
                     <?php endforeach; ?>
                 </div>
-
-                
             </div>
 
-            <!-- TOPPKNAPPAR -->
-        <div class="mb-4 d-flex justify-content-center flex-wrap gap-3">
-            <a href="dashboard.php" class="btn btn-filter <?php echo (!$hasActiveFilter && !$viewAllLevels) ? 'btn-filter-active' : ''; ?>">
-                <i class="bi bi-x-circle"></i> Rensa val!
-            </a>
-
-            <?php if ($viewAllLevels): ?>
-                <a href="<?= buildUrl(['view' => 'focus']) ?>" class="btn btn-filter" style="border-color: #fff;">
-                    <i class="bi bi-eye-slash"></i> Dölj låsta
-                </a>
-            <?php else: ?>
-                <a href="<?= buildUrl(['view' => 'all']) ?>" class="btn btn-filter" style="background-color: var(--accent-gold); color: #2c2c2c; border-color: #fff; box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);">
-                    <i class="bi bi-eye"></i> Visa allt!
-                </a>
-            <?php endif; ?>
-        </div>
         </div>
     </div>
 
-
-    <!-- 4. UPPGIFTSLISTA -->
     <?php if ($shouldShowTasks): ?>
         <div class="row">
             <?php if (count($allTasks) > 0): ?>
@@ -171,76 +154,52 @@ function buildUrl($params) {
                 foreach ($allTasks as $task): 
                     $currentGenreId = $filterGenreId ?? $task['t_genre_fk'];
                     $unlockedLevelForThisType = $task_obj->getUnlockedLevel($_SESSION['user_id'], $task['t_type_fk'], $currentGenreId);
-                    
                     $isLocked = ($task['tl_level'] > $unlockedLevelForThisType);
                     $isCompleted = ($task['st_completed'] == 1);
-                    
                     if (!$viewAllLevels) {
                         if ($isLocked) continue;
                         if ($isCompleted) continue;
                     }
                     $visibleCount++;
                 ?>
-
-                <div class="col-md-4 mb-4">
+                <div class="col-md-6 col-lg-3 mb-3">
                     <div class="card shadow-sm h-100 <?php echo ($isCompleted) ? 'border-success' : 'border-0'; ?>"
                          style="<?php echo $isLocked ? 'opacity: 0.7; filter: grayscale(100%);' : ''; ?>">
-                        
-                        <div class="card-header bg-white border-bottom-0 pt-3">
-                            <div class="badge-container">
-                                <span class="badge bg-primary badge-info-pill">Nivå <?= htmlspecialchars($task['level_name']) ?></span>
-                                <span class="badge bg-secondary badge-info-pill"><?= htmlspecialchars($task['type_name']) ?></span>
+                        <div class="card-header bg-white border-bottom-0 pt-2 pb-2">
+                            <div class="badge-container mb-1">
+                                <span class="badge bg-primary badge-info-pill small-pill">Nivå <?= htmlspecialchars($task['level_name']) ?></span>
+                                <span class="badge bg-secondary badge-info-pill small-pill"><?= htmlspecialchars($task['type_name']) ?></span>
                             </div>
-                            
                             <?php if (!empty($task['genre_name'])): ?>
-                            <div class="text-center mb-2">
-                                <span class="badge bg-light text-dark border"><?= htmlspecialchars($task['genre_name']) ?></span>
+                            <div class="text-center mb-1">
+                                <span class="badge bg-light text-dark border small"><?= htmlspecialchars($task['genre_name']) ?></span>
                             </div>
                             <?php endif; ?>
-                            
                             <?php if ($isCompleted): ?>
-                                <span class="badge bg-success badge-result">
-                                    <i class="bi bi-check-lg"></i> KLARAD
-                                    <span class="percent"><?= $task['st_score'] ?>% RÄTT</span>
-                                </span>
+                                <span class="badge bg-success badge-result py-1"><i class="bi bi-check-lg"></i> KLARAD <span class="percent ms-1"><?= $task['st_score'] ?>%</span></span>
                             <?php elseif (isset($task['st_score']) && $task['st_score'] !== null): ?>
-                                <span class="badge bg-warning text-dark badge-result">
-                                    FÖRSÖK IGEN
-                                    <span class="percent"><?= $task['st_score'] ?>% RÄTT</span>
-                                </span>
+                                <span class="badge bg-warning text-dark badge-result py-1">FÖRSÖK IGEN <span class="percent ms-1"><?= $task['st_score'] ?>%</span></span>
                             <?php endif; ?>
                         </div>
-
-                        <div class="card-body">
-                            <h5 class="card-title fw-bold">
-                                <?php if ($isLocked): ?>
-                                    <i class="bi bi-lock-fill"></i> Låst Kapitel
-                                <?php else: ?>
-                                    <?= htmlspecialchars($task['t_name']) ?>
-                                <?php endif; ?>
+                        <div class="card-body pt-0 pb-2 px-3">
+                            <h5 class="card-title fw-bold mb-1" style="font-size: 1.1rem;">
+                                <?php if ($isLocked): ?><i class="bi bi-lock-fill"></i> Låst<?php else: ?><?= htmlspecialchars($task['t_name']) ?><?php endif; ?>
                             </h5>
-                            
-                            <p class="card-text text-muted small">
-                                <?php if ($isLocked): ?>
-                                    Du måste klara föregående kapitel i denna serie för att låsa upp detta äventyr.
-                                <?php else: ?>
-                                    <?= htmlspecialchars(mb_strimwidth($task['t_text'], 0, 80, "...")) ?>
-                                <?php endif; ?>
+                            <p class="card-text text-muted small mb-2" style="font-size: 0.85rem; line-height: 1.4;">
+                                <?php if ($isLocked): ?>Du måste klara föregående kapitel.<?php else: ?><?= htmlspecialchars(mb_strimwidth($task['t_text'], 0, 60, "...")) ?><?php endif; ?>
                             </p>
                         </div>
-                        
-                        <div class="card-footer bg-white border-top-0 pb-3">
+                        <div class="card-footer bg-white border-top-0 pb-2 px-2 pt-0">
                             <div class="d-grid">
                                 <?php if ($isLocked): ?>
-                                    <button class="btn btn-secondary disabled">Låst <i class="bi bi-lock"></i></button>
+                                    <button class="btn btn-secondary btn-sm disabled">Låst <i class="bi bi-lock"></i></button>
                                 <?php else: ?>
-                                    <a href="task_view.php?id=<?= $task['t_id'] ?>" class="btn <?php echo ($isCompleted) ? 'btn-outline-success' : 'btn-outline-primary'; ?>">
-                                        <?php echo ($isCompleted) ? 'Förbättra resultat' : 'Starta Äventyret'; ?> <i class="bi bi-arrow-right"></i>
+                                    <a href="task_view.php?id=<?= $task['t_id'] ?>" class="btn btn-sm <?php echo ($isCompleted) ? 'btn-outline-success' : 'btn-outline-primary'; ?>">
+                                        <?php echo ($isCompleted) ? 'Förbättra' : 'Starta'; ?> <i class="bi bi-arrow-right"></i>
                                     </a>
                                 <?php endif; ?>
                             </div>
                         </div>
-
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -253,7 +212,6 @@ function buildUrl($params) {
                         </div>
                     </div>
                 <?php endif; ?>
-
             <?php else: ?>
                 <div class="col-12">
                     <div class="alert alert-info" style="background-color: rgba(80, 88, 100, 0.9); border: 2px solid var(--border-thick); color: white;">
@@ -263,18 +221,6 @@ function buildUrl($params) {
                 </div>
             <?php endif; ?>
     </div>
-
-    <?php else: ?>
-        <!-- OM INGET FILTER ÄR VALT (Startsidan för dashboard) -->
-        <div class="row">
-            <div class="col-12">
-                <div class="p-5 rounded-3 text-center" style="background: rgba(0,0,0,0.3); border: 2px dashed var(--accent-gold);">
-                    <h2 style="color: var(--accent-gold); font-family: 'Cinzel Decorative';">Välj din väg!</h2>
-                    <p class="lead text-white">Klicka på en knapp ovan (Spelsätt eller Tema) för att se dina uppdrag.</p>
-                    <i class="bi bi-arrow-up-circle display-3 text-white"></i>
-                </div>
-            </div>
-        </div>
     <?php endif; ?>
 </div>
 
