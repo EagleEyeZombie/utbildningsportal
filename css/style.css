@@ -554,3 +554,60 @@ body:not(.admin-mode) .table tbody td {
   color: #e0e0e0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* -------------------------------------------------------------------------- */
+/* BADGES SIDA (badges.php)                                           */
+/* -------------------------------------------------------------------------- */
+
+.achievement-card {
+  background: linear-gradient(145deg, #3c4450, #4a5463);
+  border: 2px solid var(--accent-gold);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.achievement-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+}
+
+.achievement-icon {
+  font-size: 3rem;
+  color: var(--accent-gold);
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+}
+
+/* Låsta badges - Gråskala och mörkare */
+.locked-badge {
+  background: rgba(40, 44, 52, 0.8); /* Mörkare bakgrund */
+  border-color: #6c757d; /* Grå ram */
+  filter: grayscale(100%);
+  opacity: 0.8;
+}
+
+.locked-badge .achievement-icon {
+  color: #adb5bd; /* Grå ikon */
+  text-shadow: none;
+}
+
+.locked-badge:hover {
+  transform: none; /* Ingen lyft-effekt på låsta */
+  filter: grayscale(0%); /* Liten färgeffekt vid hover för att locka */
+  opacity: 1;
+  cursor: default;
+}
+
+/* Progress bar i badges */
+.progress-wrapper {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  border-radius: 8px;
+}
+
+/* Länk-hover effekt på dashboard */
+.badge-link-hover {
+  transition: color 0.2s;
+}
+.badge-link-hover:hover {
+  color: #fff !important;
+  text-shadow: 0 0 5px var(--accent-gold);
+}

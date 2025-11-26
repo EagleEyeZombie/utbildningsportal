@@ -56,15 +56,30 @@ function buildUrl($params) {
                     </h2>
                 </div>
 
-                <div class="hero-right pe-lg-3 text-lg-end text-center" style="min-width: 150px;">
-                    <div class="small mb-1 text-uppercase fw-bold" style="color: var(--accent-gold); letter-spacing: 1px; font-size: 0.8rem;">Mina badges</div>
+<div class="hero-right pe-lg-3 text-lg-end text-center" style="min-width: 150px;">
+                    
+                    <a href="badges.php" class="text-decoration-none">
+                        <div class="small mb-1 text-uppercase fw-bold badge-link-hover" style="color: var(--accent-gold); letter-spacing: 1px; font-size: 0.8rem;">
+                            Mina badges <i class="bi bi-chevron-right small"></i>
+                        </div>
+                    </a>
+                    
                     <?php if (!empty($myBadges)): ?>
                         <div class="d-flex flex-wrap justify-content-center justify-content-lg-end gap-1">
-                            <?php foreach ($myBadges as $badge): ?>
+                            <?php 
+                            $displayBadges = array_slice($myBadges, 0, 4); 
+                            foreach ($displayBadges as $badge): 
+                            ?>
                                 <div class="mini-badge" title="<?= htmlspecialchars($badge['a_name']) ?>" data-bs-toggle="tooltip">
                                     <i class="bi <?= htmlspecialchars($badge['a_icon']) ?> fs-5 text-warning"></i>
                                 </div>
                             <?php endforeach; ?>
+                            
+                            <?php if(count($myBadges) > 4): ?>
+                                <a href="badges.php" class="mini-badge text-decoration-none bg-dark border-secondary" title="Visa alla..." data-bs-toggle="tooltip">
+                                    <span class="text-white small">+<?= count($myBadges) - 4 ?></span>
+                                </a>
+                            <?php endif; ?>
                         </div>
                     <?php else: ?>
                         <div class="text-white-50 small fst-italic">Inga badges än...</div>
