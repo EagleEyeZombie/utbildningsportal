@@ -1,6 +1,7 @@
 <?php
 require_once "include/class_user.php";
 require_once "include/class_task.php";
+require_once "include/class_school.php";
 require_once "include/config.php";
 require_once "include/functions.php";
 
@@ -8,7 +9,7 @@ require_once "include/functions.php";
 // Vi vill att dashboard.php och task_view.php ALLTID ska ha spel-bakgrunden,
 // även om det är en admin som besöker dem.
 $current_page = basename($_SERVER['PHP_SELF']);
-$game_pages = ['dashboard.php', 'task_view.php']; // Sidor som ska se ut som spelet
+$game_pages = ['dashboard.php', 'task_view.php', 'badges.php']; // Lade till badges.php här också
 
 $body_class = 'student-page-background'; // Standard (Elev)
 
@@ -59,21 +60,12 @@ if (isset($_SESSION['role_level']) && $_SESSION['role_level'] >= 5 && !in_array(
                         <a class="nav-link" href="dashboard.php" style="color: var(--accent-gold) !important;"><i class="bi bi-joystick"></i> Mina Äventyr</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="admin_classes.php"><i class="bi bi-people"></i> Klasser</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="register.php"><i class="bi bi-person-plus"></i> Lägg till användare</a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" href="admin_dashboard.php"><i class="bi bi-shield-lock"></i> Adminpanel</a>
                     </li>
                 
                 <?php elseif ($_SESSION['role_level'] == 5): ?>
                     <li class="nav-item">
                         <a class="nav-link" href="dashboard.php" style="color: var(--accent-gold) !important;"><i class="bi bi-joystick"></i> Mina Äventyr</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="register.php"><i class="bi bi-person-plus"></i> Lägg till elev</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="admin_dashboard.php"><i class="bi bi-shield-lock"></i> Adminpanel</a>
