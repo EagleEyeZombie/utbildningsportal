@@ -2,12 +2,15 @@
 require_once "include/header.php";
 
 // --- SÄKERHETSVAKT ---
-if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
-    if (isset($_SESSION['user_id'])) {
-        header("Location: dashboard.php");
-    } else {
-        header("Location: login.php");
-    }
+if (!isset($_SESSION['user_id'])) {
+    // Inte inloggad alls -> Gå till Login
+    header("Location: login.php");
+    exit;
+}
+
+if ($_SESSION['role_level'] < 5) {
+    // Inloggad men fel behörighet (t.ex. Elev försöker nå Admin) -> Gå till 403
+    header("Location: 403.php");
     exit;
 }
 
@@ -161,7 +164,7 @@ $recentUsers = $user_obj->getRecentUsers(20);
                         </div>
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="user_management.php" class="btn btn-outline-dark fw-bold me-2">Till Användarlistan</a>
+                            <a href="user-management.php" class="btn btn-outline-dark fw-bold me-2">Till Användarlistan</a>
                             <button type="submit" name="register-submit" class="btn btn-success px-4">Skapa Användare</button>
                         </div>
                     </form>

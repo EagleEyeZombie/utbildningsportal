@@ -2,11 +2,17 @@
 require_once "include/header.php";
 
 // --- SÄKERHETSVAKT ---
-if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
+if (!isset($_SESSION['user_id'])) {
+    // Inte inloggad alls -> Gå till Login
     header("Location: login.php");
     exit;
 }
 
+if ($_SESSION['role_level'] < 5) {
+    // Inloggad men fel behörighet (t.ex. Elev försöker nå Admin) -> Gå till 403
+    header("Location: 403.php");
+    exit;
+}
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     header("Location: admin_classes.php");
     exit;

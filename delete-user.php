@@ -1,27 +1,44 @@
 <?php
 require_once "include/header.php";
 
-if(isset($_GET['uid'])){
-	$userId = $_GET['uid'];
-	$currentUserInfo = $user_obj->selectUserInfo($userId);
+// --- SÄKERHETSVAKT ---
+// Endast Admin (Level 10) får radera användare
+if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 10) {
+    header("Location: dashboard.php");
+    exit;
 }
 
-if(isset($_POST['confirm']) && $_POST['confirm'] === "delete"){
-	echo "YAOIJASJDLKSJLKSJLKDKLWJS";
-}
+// Vi kräver POST och en giltig CSRF-token
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['uid'])) {
+    
+    if (!isset($_POST['csrf_token']) || !verifyCsrfToken($_POST['csrf_token'])) {
+        die("Ogiltig säkerhetstoken. Försök igen.");
+    }
 
-if(isset($_POST['confirm']) && $_POST['confirm'] === "back"){
-	header("Location: edit-user.php?uid={$userId}");
-}
+    $userId = $_POST['uid'];
 
+    // Skydd: Man får inte radera sig själv
+    if ($userId == $_SESSION['user_id']) {
+        // ÄNDRAT: user-management.php
+        header("Location: user-management.php?error=self_delete");
+        exit;
+    }
+
+    try {
+        $stmt = $pdo->prepare("DELETE FROM users WHERE u_id = ?");
+        $stmt->execute([$userId]);
+        
+        // ÄNDRAT: user-management.php
+        header("Location: user-management.php?deleted=success");
+        exit;
+
+    } catch (PDOException $e) {
+        die("Kunde inte radera användare: " . $e->getMessage());
+    }
+
+} else {
+    // ÄNDRAT: user-management.php
+    header("Location: user-management.php");
+    exit;
+}
 ?>
-
-<div class="container mt-2">
-    <div class="row">
-		<h2>Are you sure you want to delete <?= $currentUserInfo['data']['u_name']?></h2>
-		<form action="" method="post">
-				<button type="submit" class="btn btn-danger" name="confirm" value="delete">Delete</button>
-				<button type="submit" class="btn btn-primary" name="confirm" value="back">Back</button>
-			</form>
-	</div>
-</div>

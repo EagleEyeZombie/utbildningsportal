@@ -2,144 +2,175 @@
 require_once "include/header.php";
 
 // --- SÄKERHETSVAKT ---
-if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 10) { // Endast Admin (Level 10)
-    header("Location: index.php");
+if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
+    header("Location: login.php");
     exit;
 }
 
-// --- PAGINERING & SORTERING ---
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20; // Default 20
-$sort = isset($_GET['sort']) ? $_GET['sort'] : 'u_name';
-$order = isset($_GET['order']) ? $_GET['order'] : 'ASC';
+// 1. HÄMTA PARAMETRAR FRÅN URL
+$search   = isset($_GET['search']) ? cleanInput($_GET['search']) : '';
+$role     = isset($_GET['role']) ? cleanInput($_GET['role']) : 'all';
+$limit    = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
+$page     = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$sortCol  = isset($_GET['sort']) ? cleanInput($_GET['sort']) : 'u_name';
+$sortDir  = isset($_GET['dir']) ? cleanInput($_GET['dir']) : 'ASC';
 
-// Beräkna offset
+if (!in_array($limit, [20, 40, 80])) $limit = 20;
 $offset = ($page - 1) * $limit;
 
-// Hämta totalt antal användare
-$totalUsers = $user_obj->getTotalUsers();
+// 2. HÄMTA DATA
+$allRoles = $pdo->query("SELECT * FROM roles")->fetchAll();
+$users = $user_obj->getUsersFiltered($search, $role, $sortCol, $sortDir, $limit, $offset);
+$totalUsers = $user_obj->getUsersCountFiltered($search, $role);
 $totalPages = ceil($totalUsers / $limit);
 
-// Hämta användare för aktuell sida
-$userList = $user_obj->getUsersPaginated($limit, $offset, $sort, $order);
-
-// Funktion för sorteringslänk
-function sortLink($col, $label, $currentSort, $currentOrder, $currentLimit) {
-    $newOrder = ($currentSort === $col && $currentOrder === 'ASC') ? 'DESC' : 'ASC';
+function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role, $limit) {
+    $newDir = ($dbCol === $currentCol && $currentDir === 'ASC') ? 'DESC' : 'ASC';
     $icon = '';
-    if ($currentSort === $col) {
-        $icon = ($currentOrder === 'ASC') ? ' <i class="bi bi-arrow-up"></i>' : ' <i class="bi bi-arrow-down"></i>';
+    if ($dbCol === $currentCol) {
+        $icon = ($currentDir === 'ASC') ? ' <i class="bi bi-caret-up-fill"></i>' : ' <i class="bi bi-caret-down-fill"></i>';
     }
-    return "<a href='?sort=$col&order=$newOrder&limit=$currentLimit' style='color: #0d6efd; text-decoration: none; font-weight: bold;'>$label $icon</a>";
+    $url = "?sort=$dbCol&dir=$newDir&search=$search&role=$role&limit=$limit&page=1";
+    return "<a href='$url' class='text-dark text-decoration-none fw-bold'>$displayText $icon</a>";
 }
 ?>
 
-<div class="container mt-5">
+<div class="container mt-5 mb-5">
+    
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 style="font-family: 'Cinzel Decorative', serif; color: var(--success-green);">Hantera Användare</h1>
+        <h1 style="font-family: 'Cinzel Decorative', serif; color: var(--accent-gold);">Hantera Användare</h1>
         <a href="register.php" class="btn btn-success"><i class="bi bi-person-plus"></i> Skapa ny användare</a>
     </div>
 
-    <!-- INSTÄLLNINGAR (Antal per sida) -->
-    <div class="mb-3 d-flex justify-content-end">
-        <form action="" method="GET" class="d-flex align-items-center">
-            <label class="me-2" style="color: #333;">Visa:</label>
-            <select name="limit" class="form-select form-select-sm me-2" onchange="this.form.submit()" style="width: auto;">
-                <option value="20" <?= $limit == 20 ? 'selected' : '' ?>>20</option>
-                <option value="40" <?= $limit == 40 ? 'selected' : '' ?>>40</option>
-                <option value="80" <?= $limit == 80 ? 'selected' : '' ?>>80</option>
-            </select>
-            <span style="color: #333;">per sida</span>
-            <!-- Behåll sortering när man byter antal -->
-            <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
-            <input type="hidden" name="order" value="<?= htmlspecialchars($order) ?>">
-        </form>
+    <?php if (isset($_GET['deleted']) && $_GET['deleted'] == 'success'): ?>
+        <div class="alert alert-success"><i class="bi bi-check-circle"></i> Användaren har tagits bort.</div>
+    <?php endif; ?>
+    <?php if (isset($_GET['error']) && $_GET['error'] == 'self_delete'): ?>
+        <div class="alert alert-danger">Du kan inte radera ditt eget konto!</div>
+    <?php endif; ?>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body bg-light">
+            <form action="user-management.php" method="GET" class="row g-2 align-items-center">
+                
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" name="search" class="form-control" placeholder="Sök namn eller e-post..." value="<?= htmlspecialchars($search) ?>">
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <select name="role" class="form-select" onchange="this.form.submit()">
+                        <option value="all" <?= $role == 'all' ? 'selected' : '' ?>>Alla Roller</option>
+                        <?php foreach($allRoles as $r): ?>
+                            <option value="<?= $r['r_id'] ?>" <?= $role == $r['r_id'] ? 'selected' : '' ?>>
+                                <?= $r['r_name'] ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <select name="limit" class="form-select" onchange="this.form.submit()">
+                        <option value="20" <?= $limit == 20 ? 'selected' : '' ?>>20 per sida</option>
+                        <option value="40" <?= $limit == 40 ? 'selected' : '' ?>>40 per sida</option>
+                        <option value="80" <?= $limit == 80 ? 'selected' : '' ?>>80 per sida</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3 text-md-end">
+                    <button type="submit" class="btn btn-primary w-100 mb-1">Sök</button>
+                    <a href="user-management.php" class="btn btn-outline-dark w-100 btn-sm">Rensa val</a>
+                </div>
+
+                <input type="hidden" name="sort" value="<?= $sortCol ?>">
+                <input type="hidden" name="dir" value="<?= $sortDir ?>">
+            </form>
+        </div>
     </div>
 
-    <!-- ANVÄNDARLISTA -->
     <div class="card shadow">
+        <div class="card-header bg-white border-0 py-3">
+            <span class="text-muted">Visar <strong><?= count($users) ?></strong> av <strong><?= $totalUsers ?></strong> användare</span>
+        </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover table-striped align-middle mb-0">
+                <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th style="width: 15%;"><?= sortLink('u_name', 'Användarnamn', $sort, $order, $limit) ?></th>
-                            <th style="width: 15%;"><?= sortLink('u_fname', 'Förnamn', $sort, $order, $limit) ?></th>
-                            <th style="width: 15%;"><?= sortLink('u_lname', 'Efternamn', $sort, $order, $limit) ?></th>
-                            <th style="width: 25%;"><?= sortLink('u_email', 'E-post', $sort, $order, $limit) ?></th>
-                            <th style="width: 10%;"><?= sortLink('r_name', 'Roll', $sort, $order, $limit) ?></th>
-                            <th style="width: 20%;" class="text-end" style="color: #333;">Åtgärd</th>
+                            <th><?= sortLink('Användarnamn', 'u_name', $sortCol, $sortDir, $search, $role, $limit) ?></th>
+                            <th><?= sortLink('Namn', 'u_fname', $sortCol, $sortDir, $search, $role, $limit) ?></th>
+                            <th><?= sortLink('E-post', 'u_email', $sortCol, $sortDir, $search, $role, $limit) ?></th>
+                            <th><?= sortLink('Roll', 'r_name', $sortCol, $sortDir, $search, $role, $limit) ?></th>
+                            <th>XP / Takt</th>
+                            <th class="text-end">Åtgärd</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (count($userList) > 0): ?>
-                            <?php foreach ($userList as $row): ?>
+                        <?php if (count($users) > 0): ?>
+                            <?php foreach ($users as $user): ?>
                                 <?php 
-                                    // Välj färg baserat på roll
-                                    $roleClass = 'bg-secondary'; // Default grå
-                                    switch($row['r_name']) {
-                                        case 'Admin':
-                                            $roleClass = 'bg-danger border border-danger-subtle'; // Röd
-                                            break;
-                                        case 'Lärare':
-                                            $roleClass = 'bg-primary border border-primary-subtle'; // Blå
-                                            break;
-                                        case 'Elev':
-                                            $roleClass = 'bg-success border border-success-subtle'; // Grön
-                                            break;
-                                    }
+                                    $roleClass = 'bg-secondary';
+                                    if ($user['r_name'] == 'Admin') $roleClass = 'bg-danger';
+                                    if ($user['r_name'] == 'Lärare') $roleClass = 'bg-primary';
+                                    if ($user['r_name'] == 'Elev') $roleClass = 'bg-success';
                                 ?>
                                 <tr>
-                                    <td><strong><?= htmlspecialchars($row['u_name']) ?></strong></td>
-                                    <td><?= htmlspecialchars($row['u_fname']) ?></td>
-                                    <td><?= htmlspecialchars($row['u_lname']) ?></td>
-                                    <td><?= htmlspecialchars($row['u_email']) ?></td>
+                                    <td class="fw-bold"><?= htmlspecialchars($user['u_name']) ?></td>
+                                    <td><?= htmlspecialchars($user['u_fname'] . ' ' . $user['u_lname']) ?></td>
+                                    <td><?= htmlspecialchars($user['u_email']) ?></td>
+                                    <td><span class="badge <?= $roleClass ?>"><?= htmlspecialchars($user['r_name']) ?></span></td>
                                     <td>
-                                        <span class="badge rounded-pill <?= $roleClass ?>"><?= htmlspecialchars($row['r_name']) ?></span>
+                                        <small class="text-muted">
+                                            <?= $user['u_xp'] ?> XP 
+                                            <?php if(isset($user['ps_name']) && $user['ps_name'] != 'Normal'): ?>
+                                                <br><span class="text-warning fw-bold"><?= htmlspecialchars($user['ps_name']) ?></span>
+                                            <?php endif; ?>
+                                        </small>
                                     </td>
                                     <td class="text-end">
-                                        <a href="edit-user.php?uid=<?= $row['u_id'] ?>" class="btn btn-sm btn-outline-success me-1">
+                                        <a href="edit-user.php?uid=<?= $user['u_id'] ?>" class="btn btn-sm btn-primary me-1">
                                             <i class="bi bi-pencil"></i> Redigera
                                         </a>
-                                        <a href="delete-user.php?uid=<?= $row['u_id'] ?>" class="btn btn-sm btn-outline-danger">
-                                            <i class="bi bi-trash"></i> Radera
-                                        </a>
+                                        <form action="delete-user.php" method="POST" class="d-inline" onsubmit="return confirm('Är du säker på att du vill ta bort denna användare?');">
+                                            <?= csrfInput() ?>
+                                            <input type="hidden" name="uid" value="<?= $user['u_id'] ?>">
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="bi bi-trash"></i> Radera
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr><td colspan="6" class="text-center py-4">Inga användare hittades.</td></tr>
+                            <tr><td colspan="6" class="text-center py-5 text-muted">Inga användare hittades.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
             </div>
         </div>
-    </div>
-
-    <!-- PAGINERING -->
-    <?php if ($totalPages > 1): ?>
-        <nav class="mt-4">
-            <ul class="pagination justify-content-center">
-                <!-- Föregående -->
-                <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $page - 1 ?>&limit=<?= $limit ?>&sort=<?= $sort ?>&order=<?= $order ?>">Föregående</a>
-                </li>
-
-                <!-- Sidor -->
-                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                    <li class="page-item <?= ($page == $i) ? 'active' : '' ?>">
-                        <a class="page-link" href="?page=<?= $i ?>&limit=<?= $limit ?>&sort=<?= $sort ?>&order=<?= $order ?>"><?= $i ?></a>
+        
+        <?php if ($totalPages > 1): ?>
+        <div class="card-footer bg-white d-flex justify-content-center py-3">
+            <nav>
+                <ul class="pagination mb-0">
+                    <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?page=<?= $page - 1 ?>&search=<?= $search ?>&role=<?= $role ?>&limit=<?= $limit ?>&sort=<?= $sortCol ?>&dir=<?= $sortDir ?>">Föregående</a>
                     </li>
-                <?php endfor; ?>
-
-                <!-- Nästa -->
-                <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
-                    <a class="page-link" href="?page=<?= $page + 1 ?>&limit=<?= $limit ?>&sort=<?= $sort ?>&order=<?= $order ?>">Nästa</a>
-                </li>
-            </ul>
-        </nav>
-    <?php endif; ?>
-
+                    <?php for($i = 1; $i <= $totalPages; $i++): ?>
+                        <li class="page-item <?= ($page == $i) ? 'active' : '' ?>">
+                            <a class="page-link" href="?page=<?= $i ?>&search=<?= $search ?>&role=<?= $role ?>&limit=<?= $limit ?>&sort=<?= $sortCol ?>&dir=<?= $sortDir ?>"><?= $i ?></a>
+                        </li>
+                    <?php endfor; ?>
+                    <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?page=<?= $page + 1 ?>&search=<?= $search ?>&role=<?= $role ?>&limit=<?= $limit ?>&sort=<?= $sortCol ?>&dir=<?= $sortDir ?>">Nästa</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <?php endif; ?>
+    </div>
 </div>
 
 <?php require_once "include/footer.php"; ?>

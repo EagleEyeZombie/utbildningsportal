@@ -1,15 +1,21 @@
 <?php
 require_once "include/header.php";
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
+// --- SÄKERHETSVAKT ---
+if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
+    exit;
+}
+
+if ($_SESSION['role_level'] < 5) {
+    header("Location: 403.php");
     exit;
 }
 
 // Hämta data för filter
 $allTypes = $task_obj->getAllTypes();
 $allLevels = $task_obj->getAllLevels();
-$allGenres = $task_obj->getAllGenres(); // <-- NY
+$allGenres = $task_obj->getAllGenres();
 $stmt = $pdo->query("SELECT u_id, u_name FROM users WHERE u_role_fk >= 5 ORDER BY u_name");
 $allTeachers = $stmt->fetchAll();
 
@@ -18,13 +24,13 @@ $currentUserId = $_SESSION['user_id'];
 $filterTeacher = (isset($_GET['teacher']) && $_GET['teacher'] !== 'all') ? (int)$_GET['teacher'] : null;
 $filterType = (isset($_GET['type']) && $_GET['type'] !== 'all') ? (int)$_GET['type'] : null;
 $filterLevel = (isset($_GET['level']) && $_GET['level'] !== 'all') ? (int)$_GET['level'] : null;
-$filterGenre = (isset($_GET['genre']) && $_GET['genre'] !== 'all') ? (int)$_GET['genre'] : null; // <-- NY
+$filterGenre = (isset($_GET['genre']) && $_GET['genre'] !== 'all') ? (int)$_GET['genre'] : null;
 
 // Hämta data (med alla filter)
 $allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLevel, null, $filterGenre);
 ?>
 
-<div class="container mt-5">
+<div class="container mt-5 mb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Hantera Uppgifter</h1>
         <a href="admin_create_task.php" class="btn btn-success">
@@ -32,7 +38,12 @@ $allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLeve
         </a>
     </div>
 
-    <!-- FILTERFORMULÄR -->
+    <?php if (isset($_GET['msg']) && $_GET['msg'] == 'deleted'): ?>
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle"></i> Uppgiften har raderats.
+        </div>
+    <?php endif; ?>
+
     <div class="card shadow-sm mb-4">
         <div class="card-body bg-light">
             <form action="admin_tasks.php" method="GET" class="row g-3 align-items-end">
@@ -63,7 +74,6 @@ $allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLeve
                     </select>
                 </div>
                 
-                <!-- NYTT GENRE-FÄLT -->
                 <div class="col-md-2">
                     <label for="genre" class="form-label">Genre</label>
                     <select name="genre" id="genre" class="form-select">
@@ -99,36 +109,51 @@ $allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLeve
     </div>
 
     <div class="card shadow">
-        <div class="card-body">
+        <div class="card-body p-0">
             <?php if (count($allTasks) > 0): ?>
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle">
+                    <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
                                 <th>Titel</th>
-                                <th>Typ</th>
-                                <th>Genre</th> <!-- NY -->
-                                <th>Nivå</th>
+                                <th>Typ / Genre</th>
+                                <th>Nivå / XP</th>
                                 <th>Skapare</th>
-                                <th>Åtgärd</th>
+                                <th class="text-end">Åtgärd</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($allTasks as $task): ?>
                                 <tr>
                                     <td><strong><?= htmlspecialchars($task['t_name']) ?></strong></td>
-                                    <td><span class="badge bg-info text-dark"><?= htmlspecialchars($task['type_name']) ?></span></td>
-                                    <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($task['genre_name']) ?></span></td> <!-- NY -->
-                                    <td><span class="badge bg-secondary"><?= htmlspecialchars($task['level_name']) ?></span></td>
+                                    <td>
+                                        <span class="badge bg-secondary"><?= htmlspecialchars($task['type_name']) ?></span>
+                                        <?php if(!empty($task['genre_name'])): ?>
+                                            <span class="badge bg-dark border"><?= htmlspecialchars($task['genre_name']) ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">Lvl <?= $task['tl_level'] ?></span> 
+                                        <small class="text-muted"><?= $task['t_xp'] ?> XP</small>
+                                    </td>
                                     <td>
                                         <?= htmlspecialchars($task['teacher_name']) ?>
                                         <?php if ($task['t_teacher_fk'] == $currentUserId): ?>
                                             <span class="badge bg-success">Du</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td>
-                                        <a href="admin_edit_task.php?id=<?= $task['t_id'] ?>" class="btn btn-sm btn-primary">Redigera</a>
-                                        <a href="delete_task.php?id=<?= $task['t_id'] ?>" class="btn btn-sm btn-danger">Ta bort</a>
+                                    <td class="text-end">
+                                        <a href="admin_edit_task.php?id=<?= $task['t_id'] ?>" class="btn btn-sm btn-outline-primary me-1">
+                                            <i class="bi bi-pencil"></i> Redigera
+                                        </a>
+                                        
+                                        <form action="delete_task.php" method="POST" class="d-inline" onsubmit="return confirm('Är du säker? All statistik för denna uppgift kommer också försvinna.');">
+                                            <?= csrfInput() ?>
+                                            <input type="hidden" name="id" value="<?= $task['t_id'] ?>">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash"></i> Ta bort
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

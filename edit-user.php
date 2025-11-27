@@ -2,9 +2,15 @@
 require_once "include/header.php";
 
 // --- SÄKERHETSVAKT ---
-// Bara Admins (Level 10) eller Lärare (Level 5) ska kunna redigera användare
-if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
+if (!isset($_SESSION['user_id'])) {
+    // Inte inloggad alls -> Gå till Login
     header("Location: login.php");
+    exit;
+}
+
+if ($_SESSION['role_level'] < 5) {
+    // Inloggad men fel behörighet (t.ex. Elev försöker nå Admin) -> Gå till 403
+    header("Location: 403.php");
     exit;
 }
 
