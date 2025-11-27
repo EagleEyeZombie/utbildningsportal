@@ -1,10 +1,11 @@
 <?php
 require_once "include/header.php";
 
+// Hämta roller och hastigheter för dropdowns
 $allUserRoles = $pdo->query("SELECT * FROM roles")->fetchAll();
+$allProgressSpeeds = $pdo->query("SELECT * FROM progress_speeds ORDER BY ps_id ASC")->fetchAll();
 
 if(isset($_POST['register-submit'])){
-	echo "<h2>Form submitted</h2>";
 	
 	$uname = cleanInput($_POST["uname"]);
 	$ufname = cleanInput($_POST["ufname"]);
@@ -13,73 +14,91 @@ if(isset($_POST['register-submit'])){
 	$upass = $_POST["upass"];
 	$upassrpt = $_POST["upassrpt"];
 	$urole = cleanInput($_POST["urole"]);
+    
+    // NYTT: Hämta vald hastighet (sätt standard till 1 om inget valts)
+    $uspeed = isset($_POST["uspeed"]) ? cleanInput($_POST["uspeed"]) : 1;
 	
 	$result = $user_obj->checkUserRegisterInfo($uname, $umail, $upass, $upassrpt, "create");
 
 	if (!$result['success']) {
-		echo "Error: " . $result['error'];
+        // Visa felmeddelande snyggt (Bootstrap alert)
+		echo "<div class='container mt-3'><div class='alert alert-danger'>" . $result['error'] . "</div></div>";
 	} 
 	else {
-		$result = $user_obj->createUser($uname, $ufname, $ulname, $umail, $upass, $urole);
-		if (!$result['success']) {
-			echo "Error: " . $result['error'];
+        // NYTT: Skicka med $uspeed till funktionen
+		$result = $user_obj->createUser($uname, $ufname, $ulname, $umail, $upass, $urole, $uspeed);
+		
+        if (!$result['success']) {
+			echo "<div class='container mt-3'><div class='alert alert-danger'>Error: " . $result['error'] . "</div></div>";
 		} 
 		else {
-			echo "User created";
+			echo "<div class='container mt-3'><div class='alert alert-success'>Användare skapad! <a href='admin_dashboard.php'>Tillbaka till adminpanelen</a></div></div>";
 		}
 	}
 }
 ?>
-<div class="container mt-5">
+<div class="container mt-5 mb-5">
     <div class="row justify-content-center">
         <div class="col-md-6">
             <div class="card shadow-lg p-4">
-                <h2 class="text-center mb-4">Register</h2>
+                <h2 class="text-center mb-4">Lägg till användare</h2>
                 <form action="" method="POST">
                     
                     <div class="mb-3">
-                        <label for="uname" class="form-label">Username:</label>
+                        <label for="uname" class="form-label">Användarnamn:</label>
                         <input type="text" id="uname" name="uname" class="form-control" required>
                     </div>
 
                     <div class="mb-3">
-                        <label for="ufname" class="form-label">First Name:</label>
+                        <label for="ufname" class="form-label">Förnamn:</label>
                         <input type="text" id="ufname" name="ufname" class="form-control" required>
                     </div>
 
                     <div class="mb-3">
-                        <label for="ulname" class="form-label">Last Name:</label>
+                        <label for="ulname" class="form-label">Efternamn:</label>
                         <input type="text" id="ulname" name="ulname" class="form-control" required>
                     </div>
 
                     <div class="mb-3">
-                        <label for="umail" class="form-label">Email:</label>
+                        <label for="umail" class="form-label">E-post:</label>
                         <input type="email" id="umail" name="umail" class="form-control" required>
                     </div>
 
                     <div class="mb-3">
-                        <label for="upass" class="form-label">Password:</label>
+                        <label for="upass" class="form-label">Lösenord:</label>
                         <input type="password" id="upass" name="upass" class="form-control" required>
                     </div>
 
                     <div class="mb-3">
-                        <label for="upassrpt" class="form-label">Repeat Password:</label>
+                        <label for="upassrpt" class="form-label">Upprepa Lösenord:</label>
                         <input type="password" id="upassrpt" name="upassrpt" class="form-control" required>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="urole" class="form-label">User Role:</label>
-                        <select id="urole" name="urole" class="form-select" required>
-                            <?php
-							foreach($allUserRoles as $role){
-								echo "<option value='{$role['r_id']}'>{$role['r_name']}</option>";
-							}
-							?>
-                        </select>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="urole" class="form-label">Roll:</label>
+                            <select id="urole" name="urole" class="form-select" required>
+                                <?php foreach($allUserRoles as $role): ?>
+                                    <option value="<?= $role['r_id'] ?>"><?= $role['r_name'] ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="uspeed" class="form-label">XP-Bonus (Takt):</label>
+                            <select id="uspeed" name="uspeed" class="form-select">
+                                <?php foreach($allProgressSpeeds as $speed): ?>
+                                    <option value="<?= $speed['ps_id'] ?>">
+                                        <?= $speed['ps_name'] ?> (<?= $speed['ps_multiplier'] ?>x)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text small">Används för individanpassning.</div>
+                        </div>
                     </div>
 
-                    <div class="d-grid">
-                        <button type="submit" name="register-submit" class="btn btn-primary">Submit</button>
+                    <div class="d-grid mt-3">
+                        <button type="submit" name="register-submit" class="btn btn-primary btn-lg">Skapa konto</button>
                     </div>
 
                 </form>
@@ -87,3 +106,5 @@ if(isset($_POST['register-submit'])){
         </div>
     </div>
 </div>
+
+<?php require_once "include/footer.php"; ?>

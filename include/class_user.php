@@ -83,8 +83,9 @@ class User {
     
     /**
      * Skapar en ny användare i databasen.
+     * UPPDATERAD: Tar nu emot $progressSpeed (XP-multiplikator ID)
      */
-    public function createUser($uname, $ufname, $ulname, $umail, $upass, $urole){
+    public function createUser($uname, $ufname, $ulname, $umail, $upass, $urole, $progressSpeed = 1){
         try {
             // Hasha lösenordet säkert
             $hashedPassword = password_hash($upass, PASSWORD_DEFAULT);
@@ -92,10 +93,12 @@ class User {
             // Starta transaktion
             $this->pdo->beginTransaction();
 
-            // Sätt in användare i databasen (u_isactive = 1 som standard)
-            $stmt = $this->pdo->prepare("INSERT INTO users (u_name, u_fname, u_lname, u_email, u_password, u_isactive, u_role_fk, u_created) 
-                                         VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
-            $stmt->execute([$uname, $ufname, $ulname, $umail, $hashedPassword, 1, $urole]);
+            // Sätt in användare i databasen (inklusive u_progress_speed_fk)
+            $stmt = $this->pdo->prepare("INSERT INTO users (u_name, u_fname, u_lname, u_email, u_password, u_isactive, u_role_fk, u_progress_speed_fk, u_created) 
+                                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            
+            // Vi skickar med $progressSpeed här
+            $stmt->execute([$uname, $ufname, $ulname, $umail, $hashedPassword, 1, $urole, $progressSpeed]);
 
             // Bekräfta transaktion
             $this->pdo->commit();
@@ -111,14 +114,15 @@ class User {
     
     /**
      * Uppdaterar en befintlig användare.
+     * UPPDATERAD: Tar nu emot $progressSpeed
      */
-    public function editUser($userId, $uname, $ufname, $ulname, $umail, $upass, $urole) {
+    public function editUser($userId, $uname, $ufname, $ulname, $umail, $upass, $urole, $progressSpeed) {
         try {
             $this->pdo->beginTransaction();
 
-            // Grundfråga för uppdatering
-            $query = "UPDATE users SET u_fname = ?, u_lname = ?, u_email = ?, u_role_fk = ?";
-            $params = [$ufname, $ulname, $umail, $urole];
+            // Grundfråga för uppdatering - Nu med u_progress_speed_fk
+            $query = "UPDATE users SET u_fname = ?, u_lname = ?, u_email = ?, u_role_fk = ?, u_progress_speed_fk = ?";
+            $params = [$ufname, $ulname, $umail, $urole, $progressSpeed];
 
             // Om lösenord angavs, uppdatera det också
             if (!empty($upass)) {
@@ -145,10 +149,12 @@ class User {
     
     /**
      * Hämtar information om en specifik användare.
+     * UPPDATERAD: Hämtar nu även u_progress_speed_fk
      */
     public function selectUserInfo($userId) {
         try {
-            $stmt = $this->pdo->prepare("SELECT u_name, u_fname, u_lname, u_email, u_role_fk FROM users WHERE u_id = ?");
+            // Vi la till u_progress_speed_fk i listan
+            $stmt = $this->pdo->prepare("SELECT u_name, u_fname, u_lname, u_email, u_role_fk, u_progress_speed_fk FROM users WHERE u_id = ?");
             $stmt->execute([$userId]);
 
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -289,6 +295,80 @@ class User {
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             return [];
+        }
+    }
+
+    // --- LEVEL & XP SYSTEM (NY FUNKTION) ---
+    // Lägg denna längst ner i class_user.php, innan sista }
+
+    public function addXpAndCheckLevelup($userId, $baseXpAmount) {
+        try {
+            // 1. Hämta användarens data + deras XP-multiplikator
+            // Vi hämtar ps_multiplier via JOIN. Om ingen finns blir det NULL (hanteras nedan)
+            $sql = "SELECT u.u_xp, u.u_level, ps.ps_multiplier 
+                    FROM users u
+                    LEFT JOIN progress_speeds ps ON u.u_progress_speed_fk = ps.ps_id
+                    WHERE u.u_id = ?";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([$userId]);
+            $user = $stmt->fetch();
+            
+            if (!$user) return false;
+
+            $currentXp = $user['u_xp'];
+            $currentLevel = $user['u_level'];
+            
+            // Standardvärde 1.0 om inget är valt
+            $multiplier = $user['ps_multiplier'] ?? 1.0;
+
+            // 2. Beräkna ny XP med multiplikator
+            // Vi avrundar till heltal (floor)
+            $xpWithBonus = floor($baseXpAmount * $multiplier);
+            $newXp = $currentXp + $xpWithBonus;
+
+            // 3. Hämta nivå-gränser från databasen (level_config)
+            // Vi antar att tabellen finns. Om den är tom, fallback till nuvarande level.
+            $stmtConfig = $this->pdo->query("SELECT lc_level, lc_xp_required FROM level_config ORDER BY lc_level ASC");
+            $levelConfig = $stmtConfig->fetchAll(PDO::FETCH_KEY_PAIR); // [1 => 0, 2 => 100, ...]
+
+            // 4. Räkna ut vilken nivå användaren ska ha
+            $calculatedLevel = 1;
+            if ($levelConfig) {
+                foreach ($levelConfig as $lvl => $reqXp) {
+                    if ($newXp >= $reqXp) {
+                        $calculatedLevel = $lvl;
+                    } else {
+                        break; 
+                    }
+                }
+            } else {
+                // Fallback om tabellen är tom eller saknas
+                $calculatedLevel = $currentLevel; 
+            }
+
+            // 5. Uppdatera databasen
+            // Vi uppdaterar leveln BARA om den har ökat
+            $finalLevel = max($currentLevel, $calculatedLevel);
+            $leveledUp = ($finalLevel > $currentLevel);
+
+            $update = $this->pdo->prepare("UPDATE users SET u_xp = ?, u_level = ? WHERE u_id = ?");
+            $update->execute([$newXp, $finalLevel, $userId]);
+
+            // Uppdatera sessionen direkt
+            if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $userId) {
+                $_SESSION['user_xp'] = $newXp;
+                $_SESSION['user_level'] = $finalLevel;
+            }
+
+            return [
+                'new_xp' => $newXp,
+                'gained_xp' => $xpWithBonus,
+                'new_level' => $finalLevel,
+                'leveled_up' => $leveledUp
+            ];
+
+        } catch (Exception $e) {
+            return false;
         }
     }
 }

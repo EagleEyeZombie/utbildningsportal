@@ -60,11 +60,11 @@ function buildUrl($params) {
                 <div class="hero-left d-flex flex-column gap-2 ps-lg-3 text-lg-start text-center">
                     <div class="hero-stat">
                         <i class="bi bi-star-fill text-warning"></i> 
-                        <span>XP: <strong><?php echo isset($_SESSION['user_xp']) ? $_SESSION['user_xp'] : 0; ?></strong></span>
+                        <span>Poäng: <strong><?php echo isset($_SESSION['user_xp']) ? $_SESSION['user_xp'] : 0; ?> XP</strong></span>
                     </div>
                     <div class="hero-stat">
                         <i class="bi bi-trophy-fill text-warning"></i> 
-                        <span>Nivå: <strong><?php echo isset($_SESSION['user_level']) ? $_SESSION['user_level'] : 1; ?></strong></span>
+                        <span>Nivå: Level <strong><?php echo isset($_SESSION['user_level']) ? $_SESSION['user_level'] : 1; ?></strong></span>
                     </div>
                 </div>
 

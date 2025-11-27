@@ -11,12 +11,20 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
     exit;
 }
 
-// Hämta alla roller
+// 1. Hämta alla roller
 try {
     $roleStmt = $pdo->query("SELECT * FROM roles ORDER BY r_level ASC");
     $allRoles = $roleStmt->fetchAll();
 } catch (PDOException $e) {
     die("Kunde inte hämta roller: " . $e->getMessage());
+}
+
+// 2. Hämta alla XP-hastigheter (NYTT)
+try {
+    $speedStmt = $pdo->query("SELECT * FROM progress_speeds ORDER BY ps_id ASC");
+    $allProgressSpeeds = $speedStmt->fetchAll();
+} catch (PDOException $e) {
+    die("Kunde inte hämta hastigheter: " . $e->getMessage());
 }
 
 $errorMsg = "";
@@ -35,14 +43,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register-submit'])) {
     $umail = cleanInput($_POST['umail']);
     $upass = $_POST['upass'];
     $upassrpt = $_POST['upassrpt'];
-    $urole = cleanInput($_POST['urole']); 
+    $urole = cleanInput($_POST['urole']);
+    
+    // NYTT: Hämta vald hastighet (Standard är 1 = Normal)
+    $uspeed = isset($_POST['uspeed']) ? cleanInput($_POST['uspeed']) : 1;
 
     $checkResult = $user_obj->checkUserRegisterInfo($uname, $umail, $upass, $upassrpt, "create");
 
     if (!$checkResult['success']) {
         $errorMsg = $checkResult['error'];
     } else {
-        $createResult = $user_obj->createUser($uname, $ufname, $ulname, $umail, $upass, $urole);
+        // NYTT: Skicka med $uspeed till funktionen
+        $createResult = $user_obj->createUser($uname, $ufname, $ulname, $umail, $upass, $urole, $uspeed);
 
         if ($createResult['success']) {
             $successMsg = "Användaren <strong>$uname</strong> har skapats! Du kan skapa en till nedan.";
@@ -61,9 +73,7 @@ $recentUsers = $user_obj->getRecentUsers(20);
     <div class="row justify-content-center">
         <div class="col-md-10">
             
-            <!-- FORMULÄR -->
             <div class="card shadow mb-5">
-                <!-- ÄNDRAT: Tog bort "bg-primary text-white" för att fixa synligheten -->
                 <div class="card-header">
                     <h3 class="mb-0"><i class="bi bi-person-plus-fill"></i> Lägg till ny användare</h3>
                 </div>
@@ -103,26 +113,39 @@ $recentUsers = $user_obj->getRecentUsers(20);
                         </div>
 
                         <div class="row">
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-6 mb-3">
                                 <label for="upass" class="form-label">Lösenord</label>
                                 <input type="password" class="form-control" id="upass" name="upass" required>
                             </div>
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-6 mb-3">
                                 <label for="upassrpt" class="form-label">Upprepa lösenord</label>
                                 <input type="password" class="form-control" id="upassrpt" name="upassrpt" required>
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="urole" class="form-label">Roll</label>
+                        </div>
+
+                        <div class="row p-3 bg-light rounded border mb-3 mx-0">
+                            <div class="col-md-6 mb-3 mb-md-0">
+                                <label for="urole" class="form-label fw-bold">Roll</label>
                                 <select class="form-select" id="urole" name="urole">
                                     <?php foreach ($allRoles as $role): ?>
                                         <option value="<?= $role['r_id'] ?>" <?= ($role['r_id'] == 1) ? 'selected' : '' ?>><?= $role['r_name'] ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
+                            <div class="col-md-6">
+                                <label for="uspeed" class="form-label fw-bold">XP-Bonus (Takt)</label>
+                                <select class="form-select" id="uspeed" name="uspeed">
+                                    <?php foreach ($allProgressSpeeds as $speed): ?>
+                                        <option value="<?= $speed['ps_id'] ?>">
+                                            <?= $speed['ps_name'] ?> (<?= $speed['ps_multiplier'] ?>x)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <div class="form-text text-muted small">Används för individanpassning.</div>
+                            </div>
                         </div>
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <!-- ÄNDRAT: Tillbaka-knapp med history.back() och svart text -->
                             <a href="javascript:history.back()" class="btn btn-light border border-secondary me-2" style="color: #000; font-weight: bold;">
                                 <i class="bi bi-arrow-left"></i> Tillbaka
                             </a>
@@ -132,7 +155,6 @@ $recentUsers = $user_obj->getRecentUsers(20);
                 </div>
             </div>
 
-            <!-- LISTA PÅ SENAST TILLAGDA -->
             <?php if (!empty($recentUsers)): ?>
             <div class="card shadow">
                 <div class="card-header">
@@ -152,18 +174,11 @@ $recentUsers = $user_obj->getRecentUsers(20);
                             <tbody>
                                 <?php foreach ($recentUsers as $user): ?>
                                     <?php 
-                                        // Välj färg baserat på roll
                                         $roleClass = 'bg-secondary'; 
                                         switch($user['r_name']) {
-                                            case 'Admin':
-                                                $roleClass = 'bg-danger border border-danger-subtle'; 
-                                                break;
-                                            case 'Lärare':
-                                                $roleClass = 'bg-primary border border-primary-subtle'; 
-                                                break;
-                                            case 'Elev':
-                                                $roleClass = 'bg-success border border-success-subtle'; 
-                                                break;
+                                            case 'Admin': $roleClass = 'bg-danger border border-danger-subtle'; break;
+                                            case 'Lärare': $roleClass = 'bg-primary border border-primary-subtle'; break;
+                                            case 'Elev': $roleClass = 'bg-success border border-success-subtle'; break;
                                         }
                                     ?>
                                     <tr>
