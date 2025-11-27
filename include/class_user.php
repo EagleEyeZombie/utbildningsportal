@@ -85,7 +85,7 @@ class User {
      * Skapar en ny användare i databasen.
      * UPPDATERAD: Tar nu emot $progressSpeed (XP-multiplikator ID)
      */
-    public function createUser($uname, $ufname, $ulname, $umail, $upass, $urole, $progressSpeed = 1){
+    public function createUser($uname, $ufname, $ulname, $umail, $upass, $urole, $progressSpeed = 1, $classId = null){
         try {
             // Hasha lösenordet säkert
             $hashedPassword = password_hash($upass, PASSWORD_DEFAULT);
@@ -93,12 +93,15 @@ class User {
             // Starta transaktion
             $this->pdo->beginTransaction();
 
+            // Hantera tom sträng som NULL för klass
+            if (empty($classId)) $classId = null;
+
             // Sätt in användare i databasen (inklusive u_progress_speed_fk)
-            $stmt = $this->pdo->prepare("INSERT INTO users (u_name, u_fname, u_lname, u_email, u_password, u_isactive, u_role_fk, u_progress_speed_fk, u_created) 
-                                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmt = $this->pdo->prepare("INSERT INTO users (u_name, u_fname, u_lname, u_email, u_password, u_isactive, u_role_fk, u_progress_speed_fk, u_class_fk, u_created) 
+                                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
             
             // Vi skickar med $progressSpeed här
-            $stmt->execute([$uname, $ufname, $ulname, $umail, $hashedPassword, 1, $urole, $progressSpeed]);
+            $stmt->execute([$uname, $ufname, $ulname, $umail, $hashedPassword, 1, $urole, $progressSpeed, $classId]);
 
             // Bekräfta transaktion
             $this->pdo->commit();

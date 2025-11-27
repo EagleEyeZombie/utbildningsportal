@@ -16,9 +16,13 @@ $options = [
 ];
 $pdo = new PDO($dsn, $user, $pass, $options);
 
+// Ladda klassfiler
+require_once "include/class_user.php";
+require_once "include/class_task.php";
+require_once "include/class_school.php"; // <--- NYTT
+
 $user_obj = new User($pdo);
 $task_obj = new Task($pdo);
-
-
+$school_obj = new School($pdo); // <--- NYTT
 
 ?>
