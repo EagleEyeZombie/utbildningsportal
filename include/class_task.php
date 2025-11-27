@@ -467,5 +467,98 @@ class Task {
 
         return $progressData;
     }
+
+// --- HÄMTA RELEVANTA UPPGIFTER (SMART VERSION) ---
+    public function getRecentAndNextTasks($studentId, $limit = 8) {
+        try {
+            $sql = "
+            (
+                -- 1. SENAST KLARADE (Prioritet 1: Visa vad jag precis åstadkommit)
+                SELECT t.*, u.u_name AS teacher_name, tt.tt_name AS type_name, 
+                       tl.tl_name AS level_name, tl.tl_level, 
+                       st.st_score, st.st_completed,
+                       c.c_name AS class_name, g.g_name AS genre_name,
+                       1 AS sort_priority 
+                FROM student_tasks st
+                JOIN tasks t ON st.st_t_id_fk = t.t_id
+                LEFT JOIN users u ON t.t_teacher_fk = u.u_id
+                LEFT JOIN task_types tt ON t.t_type_fk = tt.tt_id
+                LEFT JOIN task_levels tl ON t.t_level_fk = tl.tl_id
+                LEFT JOIN classes c ON t.t_class_fk = c.c_id
+                LEFT JOIN genres g ON t.t_genre_fk = g.g_id
+                WHERE st.st_s_id_fk = ? AND st.st_completed = 1
+                ORDER BY st.st_id DESC
+                LIMIT 2
+            )
+            UNION
+            (
+                -- 2. NÄSTA KAPITEL (Prioritet 2: Det direkta nästa steget i dina äventyr)
+                -- Här räknar vi ut din Max-level för varje genre/typ och letar efter Level + 1
+                SELECT t.*, u.u_name AS teacher_name, tt.tt_name AS type_name, 
+                       tl.tl_name AS level_name, tl.tl_level, 
+                       NULL as st_score, 0 as st_completed,
+                       c.c_name AS class_name, g.g_name AS genre_name,
+                       2 AS sort_priority 
+                FROM tasks t
+                JOIN task_levels tl ON t.t_level_fk = tl.tl_id
+                JOIN (
+                    -- Subquery: Hitta nästa nivå för varje Typ+Genre eleven spelat
+                    SELECT t2.t_type_fk, t2.t_genre_fk, MAX(tl2.tl_level) + 1 as next_target_level
+                    FROM student_tasks st2
+                    JOIN tasks t2 ON st2.st_t_id_fk = t2.t_id
+                    JOIN task_levels tl2 ON t2.t_level_fk = tl2.tl_id
+                    WHERE st2.st_s_id_fk = ? AND st2.st_completed = 1
+                    GROUP BY t2.t_type_fk, t2.t_genre_fk
+                ) as progress ON t.t_type_fk = progress.t_type_fk 
+                              AND t.t_genre_fk = progress.t_genre_fk 
+                              AND tl.tl_level = progress.next_target_level
+                LEFT JOIN users u ON t.t_teacher_fk = u.u_id
+                LEFT JOIN task_types tt ON t.t_type_fk = tt.tt_id
+                LEFT JOIN classes c ON t.t_class_fk = c.c_id
+                LEFT JOIN genres g ON t.t_genre_fk = g.g_id
+                
+                -- Dubbelkolla att vi inte redan gjort den (om databasen har dubbletter/fel)
+                WHERE t.t_id NOT IN (SELECT st_t_id_fk FROM student_tasks WHERE st_s_id_fk = ? AND st_completed = 1)
+            )
+            UNION
+            (
+                -- 3. NYA ÄVENTYR (Prioritet 3: Fyll ut listan med Nivå 1-uppgifter om det finns plats)
+                SELECT t.*, u.u_name AS teacher_name, tt.tt_name AS type_name, 
+                       tl.tl_name AS level_name, tl.tl_level, 
+                       NULL as st_score, 0 as st_completed,
+                       c.c_name AS class_name, g.g_name AS genre_name,
+                       3 AS sort_priority 
+                FROM tasks t
+                JOIN task_levels tl ON t.t_level_fk = tl.tl_id
+                LEFT JOIN users u ON t.t_teacher_fk = u.u_id
+                LEFT JOIN task_types tt ON t.t_type_fk = tt.tt_id
+                LEFT JOIN classes c ON t.t_class_fk = c.c_id
+                LEFT JOIN genres g ON t.t_genre_fk = g.g_id
+                
+                -- Bara nivå 1, och bara sånt vi inte gjort
+                WHERE tl.tl_level = 1
+                AND t.t_id NOT IN (SELECT st_t_id_fk FROM student_tasks WHERE st_s_id_fk = ?)
+                LIMIT ?
+            )
+            -- Sortera så att Klarade (1) kommer sist, Nästa steg (2) kommer först
+            ORDER BY sort_priority ASC, tl_level ASC
+            LIMIT ?";
+
+            $stmt = $this->pdo->prepare($sql);
+            
+            // Parametrar:
+            // 1. studentId (för "Senast klarade")
+            // 2. studentId (för "Nästa kapitel" uträkning)
+            // 3. studentId (för "Nästa kapitel" dubbelkoll)
+            // 4. studentId (för "Nya äventyr" dubbelkoll)
+            // 5. limit (för "Nya äventyr" limit)
+            // 6. limit (Total limit)
+            
+            $stmt->execute([$studentId, $studentId, $studentId, $studentId, $limit, $limit]);
+            
+            return $stmt->fetchAll();
+
+        } catch (PDOException $e) { return []; }
+    }
 }
 ?>
