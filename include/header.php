@@ -59,6 +59,9 @@ if (isset($_SESSION['role_level']) && $_SESSION['role_level'] >= 5 && !in_array(
                         <a class="nav-link" href="dashboard.php" style="color: var(--accent-gold) !important;"><i class="bi bi-joystick"></i> Mina Äventyr</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="admin_classes.php"><i class="bi bi-people"></i> Klasser</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="register.php"><i class="bi bi-person-plus"></i> Lägg till användare</a>
                     </li>
                     <li class="nav-item">

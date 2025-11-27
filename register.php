@@ -11,26 +11,25 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
     exit;
 }
 
-// 1. Hämta alla roller
+// 1. Hämta data för dropdowns
 try {
     $roleStmt = $pdo->query("SELECT * FROM roles ORDER BY r_level ASC");
     $allRoles = $roleStmt->fetchAll();
-} catch (PDOException $e) {
-    die("Kunde inte hämta roller: " . $e->getMessage());
-}
 
-// 2. Hämta alla XP-hastigheter (NYTT)
-try {
     $speedStmt = $pdo->query("SELECT * FROM progress_speeds ORDER BY ps_id ASC");
     $allProgressSpeeds = $speedStmt->fetchAll();
+
+    // Hämta klasser via school_obj
+    $allClasses = $school_obj->getAllClasses();
+
 } catch (PDOException $e) {
-    die("Kunde inte hämta hastigheter: " . $e->getMessage());
+    die("Kunde inte hämta data: " . $e->getMessage());
 }
 
 $errorMsg = "";
 $successMsg = "";
 
-// Hantera formuläret
+// 2. Hantera formulär
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register-submit'])) {
     
     if (!verifyCsrfToken($_POST['csrf_token'])) {
@@ -45,26 +44,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register-submit'])) {
     $upassrpt = $_POST['upassrpt'];
     $urole = cleanInput($_POST['urole']);
     
-    // NYTT: Hämta vald hastighet (Standard är 1 = Normal)
+    // Hämta XP-hastighet (Standard: 1)
     $uspeed = isset($_POST['uspeed']) ? cleanInput($_POST['uspeed']) : 1;
+    
+    // Hämta Klass (Kan vara tom)
+    $uclass = !empty($_POST['uclass']) ? cleanInput($_POST['uclass']) : null;
 
     $checkResult = $user_obj->checkUserRegisterInfo($uname, $umail, $upass, $upassrpt, "create");
 
     if (!$checkResult['success']) {
         $errorMsg = $checkResult['error'];
     } else {
-        // NYTT: Skicka med $uspeed till funktionen
-        $createResult = $user_obj->createUser($uname, $ufname, $ulname, $umail, $upass, $urole, $uspeed);
+        // Skicka med både hastighet och klass till create-funktionen
+        $createResult = $user_obj->createUser($uname, $ufname, $ulname, $umail, $upass, $urole, $uspeed, $uclass);
 
         if ($createResult['success']) {
-            $successMsg = "Användaren <strong>$uname</strong> har skapats! Du kan skapa en till nedan.";
+            $successMsg = "Användaren <strong>$uname</strong> har skapats!";
         } else {
             $errorMsg = $createResult['error'];
         }
     }
 }
 
-// Hämta de 20 senaste användarna
+// 3. Hämta de 20 senaste användarna (för listan i botten)
 $recentUsers = $user_obj->getRecentUsers(20);
 
 ?>
@@ -123,32 +125,43 @@ $recentUsers = $user_obj->getRecentUsers(20);
                             </div>
                         </div>
 
-                        <div class="row p-3 bg-light rounded border mb-3 mx-0">
-                            <div class="col-md-6 mb-3 mb-md-0">
-                                <label for="urole" class="form-label fw-bold">Roll</label>
-                                <select class="form-select" id="urole" name="urole">
-                                    <?php foreach ($allRoles as $role): ?>
-                                        <option value="<?= $role['r_id'] ?>" <?= ($role['r_id'] == 1) ? 'selected' : '' ?>><?= $role['r_name'] ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="uspeed" class="form-label fw-bold">XP-Bonus (Takt)</label>
-                                <select class="form-select" id="uspeed" name="uspeed">
-                                    <?php foreach ($allProgressSpeeds as $speed): ?>
-                                        <option value="<?= $speed['ps_id'] ?>">
-                                            <?= $speed['ps_name'] ?> (<?= $speed['ps_multiplier'] ?>x)
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <div class="form-text text-muted small">Används för individanpassning.</div>
+                        <div class="p-3 bg-light rounded border mb-3">
+                            <h6 class="mb-3 text-muted">Konto-inställningar</h6>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="urole" class="form-label fw-bold">Roll</label>
+                                    <select class="form-select" id="urole" name="urole">
+                                        <?php foreach ($allRoles as $role): ?>
+                                            <option value="<?= $role['r_id'] ?>" <?= ($role['r_id'] == 1) ? 'selected' : '' ?>><?= $role['r_name'] ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label for="uclass" class="form-label fw-bold">Klass (Valfritt)</label>
+                                    <select class="form-select" id="uclass" name="uclass">
+                                        <option value="">-- Ingen klass --</option>
+                                        <?php foreach ($allClasses as $c): ?>
+                                            <option value="<?= $c['c_id'] ?>"><?= htmlspecialchars($c['c_name']) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label for="uspeed" class="form-label fw-bold">XP-Takt</label>
+                                    <select class="form-select" id="uspeed" name="uspeed">
+                                        <?php foreach ($allProgressSpeeds as $speed): ?>
+                                            <option value="<?= $speed['ps_id'] ?>">
+                                                <?= $speed['ps_name'] ?> (<?= $speed['ps_multiplier'] ?>x)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="javascript:history.back()" class="btn btn-light border border-secondary me-2" style="color: #000; font-weight: bold;">
-                                <i class="bi bi-arrow-left"></i> Tillbaka
-                            </a>
+                            <a href="user_management.php" class="btn btn-outline-dark fw-bold me-2">Till Användarlistan</a>
                             <button type="submit" name="register-submit" class="btn btn-success px-4">Skapa Användare</button>
                         </div>
                     </form>
