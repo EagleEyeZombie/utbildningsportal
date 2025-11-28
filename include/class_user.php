@@ -67,7 +67,6 @@ class User {
     
     /**
      * Skapar en ny användare i databasen.
-     * Stödjer nu XP-hastighet och Klass.
      */
     public function createUser($uname, $ufname, $ulname, $umail, $upass, $urole, $progressSpeed = 1, $classId = null){
         try {
@@ -168,6 +167,8 @@ class User {
                 $_SESSION['role_level'] = $user['r_level'];
                 $_SESSION['user_xp'] = $user['u_xp'];
                 $_SESSION['user_level'] = $user['u_level'];
+                // Ladda in temat vid inloggning också
+                $_SESSION['user_theme'] = $user['u_theme'] ?? 'default';
                 
                 $updateStmt = $this->pdo->prepare("UPDATE users SET u_lastlogin = NOW() WHERE u_id = ?");
                 $updateStmt->execute([$user['u_id']]);
@@ -183,7 +184,7 @@ class User {
     }
     
     /**
-     * Enkel sökning (Kan behållas för bakåtkompatibilitet)
+     * Enkel sökning
      */
     public function searchUsers($userName){
         try {
@@ -206,7 +207,7 @@ class User {
         }
     }
 
-    // --- AVANCERAD HÄMTNING MED FILTER (För user_management.php) ---
+    // --- AVANCERAD HÄMTNING MED FILTER ---
 
     public function getUsersFiltered($search, $roleId, $sortCol, $sortDir, $limit, $offset) {
         try {
@@ -265,7 +266,6 @@ class User {
         } catch (Exception $e) { return 0; }
     }
 
-    // --- ENKEL HÄMTNING (För pagination utan filter - kan vara bra att ha kvar) ---
     public function getUsersPaginated($limit, $offset) {
         return $this->getUsersFiltered('', 'all', 'u_name', 'ASC', $limit, $offset);
     }
@@ -274,7 +274,6 @@ class User {
         return $this->getUsersCountFiltered('', 'all');
     }
 
-    // --- SENASTE ANVÄNDARE (För register.php) ---
     public function getRecentUsers($limit = 20) {
         try {
             $sql = "SELECT u_name, u_fname, u_lname, u_email, r_name, u_created 
@@ -289,11 +288,10 @@ class User {
         } catch (Exception $e) { return []; }
     }
 
-    // --- LEVEL & XP SYSTEM (Nytt dynamiskt system) ---
+    // --- LEVEL & XP SYSTEM ---
 
     public function addXpAndCheckLevelup($userId, $baseXpAmount) {
         try {
-            // Hämta data och multiplikator
             $sql = "SELECT u.u_xp, u.u_level, ps.ps_multiplier 
                     FROM users u
                     LEFT JOIN progress_speeds ps ON u.u_progress_speed_fk = ps.ps_id
@@ -308,15 +306,12 @@ class User {
             $currentLevel = $user['u_level'];
             $multiplier = $user['ps_multiplier'] ?? 1.0;
 
-            // Beräkna ny XP
             $xpWithBonus = floor($baseXpAmount * $multiplier);
             $newXp = $currentXp + $xpWithBonus;
 
-            // Hämta nivå-gränser från DB
             $stmtConfig = $this->pdo->query("SELECT lc_level, lc_xp_required FROM level_config ORDER BY lc_level ASC");
             $levelConfig = $stmtConfig->fetchAll(PDO::FETCH_KEY_PAIR);
 
-            // Beräkna nivå
             $calculatedLevel = 1;
             if ($levelConfig) {
                 foreach ($levelConfig as $lvl => $reqXp) {
@@ -330,14 +325,12 @@ class User {
                 $calculatedLevel = $currentLevel; 
             }
 
-            // Uppdatera om nivå ökat
             $finalLevel = max($currentLevel, $calculatedLevel);
             $leveledUp = ($finalLevel > $currentLevel);
 
             $update = $this->pdo->prepare("UPDATE users SET u_xp = ?, u_level = ? WHERE u_id = ?");
             $update->execute([$newXp, $finalLevel, $userId]);
 
-            // Uppdatera session
             if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $userId) {
                 $_SESSION['user_xp'] = $newXp;
                 $_SESSION['user_level'] = $finalLevel;
@@ -352,6 +345,27 @@ class User {
 
         } catch (Exception $e) {
             return false;
+        }
+    }
+
+    // --- TEMAHANTERING ---
+    public function updateUserTheme($userId, $themeName) {
+        try {
+            // ÄNDRAT: minecraft -> pixel
+            $allowedThemes = ['fantasy', 'pink', 'retro', 'cyberpunk', 'pixel', 'nature', 'ocean', 'rainbow'];
+            
+            if (!in_array($themeName, $allowedThemes)) {
+                return ['success' => false, 'error' => 'Ogiltigt tema.'];
+            }
+
+            $stmt = $this->pdo->prepare("UPDATE users SET u_theme = ? WHERE u_id = ?");
+            $stmt->execute([$themeName, $userId]);
+            
+            $_SESSION['user_theme'] = $themeName;
+            
+            return ['success' => true];
+        } catch (Exception $e) {
+            return ['success' => false, 'error' => 'Kunde inte byta tema.'];
         }
     }
 }

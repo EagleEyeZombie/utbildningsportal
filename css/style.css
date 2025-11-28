@@ -645,3 +645,289 @@ body:not(.admin-mode) .table tbody td {
 .bs-popover-bottom > .popover-arrow::after {
   border-bottom-color: rgba(50, 55, 65, 0.98);
 }
+
+/* -------------------------------------------------------------------------- */
+/* TEMA-SYSTEM                                                                */
+/* -------------------------------------------------------------------------- */
+
+/* --- TEMA: FANTASY (Standard) --- */
+/* Standardtemat behöver ingen klass då det är "default" variablerna, 
+   men vi kan använda .theme-fantasy för att vara tydliga. */
+
+/* --- TEMA: PINK (f.d. Godis) --- */
+body.theme-pink {
+  --primary-stone: #ffc0cb;
+  --dark-stone: #fff0f5;
+  --border-thick: #ff69b4;
+  --accent-gold: #ff1493;
+  --text-white: #5a3e3e;
+  background-image: none !important;
+  background-color: #ffe4e1 !important;
+}
+body.theme-pink .navbar {
+  background-color: #ff69b4 !important;
+  border-bottom: 4px dotted #fff;
+}
+body.theme-pink .card {
+  border-radius: 25px;
+  border: 3px solid var(--border-thick);
+}
+body.theme-pink h1,
+body.theme-pink h2 {
+  font-family: "Pacifico", cursive !important;
+  text-shadow: 2px 2px 0px #fff;
+}
+
+/* --- TEMA: RETRO (f.d. Grease) --- */
+body.theme-retro {
+  --primary-stone: #000000;
+  --dark-stone: #222;
+  --border-thick: #e60000;
+  --accent-gold: #ffffff;
+  background-image: url("https://www.transparenttextures.com/patterns/checkered-pattern.png") !important;
+  background-color: #1a1a1a !important;
+}
+body.theme-retro .navbar {
+  background-color: #e60000 !important;
+  border-bottom: 4px solid #fff;
+}
+body.theme-retro h1,
+body.theme-retro h2 {
+  font-family: "Lobster", cursive !important;
+  text-shadow: 3px 3px 0 #000;
+}
+
+/* --- TEMA: CYBERPUNK --- */
+body.theme-cyberpunk {
+  --primary-stone: #050505;
+  --dark-stone: #111;
+  --border-thick: #00f3ff;
+  --accent-gold: #00f3ff;
+  --text-white: #e0e0e0;
+  background-image: none !important;
+  background-color: #000 !important;
+  font-family: "Orbitron", sans-serif;
+}
+body.theme-cyberpunk .navbar {
+  background-color: #000 !important;
+  border-bottom: 1px solid #00f3ff;
+  box-shadow: 0 0 15px #00f3ff;
+}
+body.theme-cyberpunk .card {
+  border-radius: 2px;
+  box-shadow: 0 0 10px #00f3ff;
+}
+
+/* --- TEMA: PIXEL (f.d. Minecraft) --- */
+body.theme-pixel {
+  --primary-stone: #5c3c1e; /* Jordbrun */
+  --dark-stone: #3b230f; /* Mörk jord */
+  --border-thick: #7c7c7c; /* Sten-grå */
+  --accent-gold: #54cc33; /* Gräs-grön */
+  --text-white: #ffffff;
+
+  /* Pixel-aktig bakgrund (Cubes) */
+  background-image: url("https://www.transparenttextures.com/patterns/cubes.png") !important;
+  background-color: #5c3c1e !important;
+  font-family: "Exo 2", sans-serif; /* Fallback för brödtext */
+}
+
+body.theme-pixel .navbar {
+  background-color: #3b230f !important;
+  border-bottom: 4px solid #000;
+}
+
+body.theme-pixel h1,
+body.theme-pixel h2,
+body.theme-pixel h3,
+body.theme-pixel .navbar-brand,
+body.theme-pixel .btn {
+  font-family: "Press Start 2P", cursive !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  line-height: 1.5;
+  font-size: 0.9em; /* Pixel-fonter är ofta stora */
+}
+
+body.theme-pixel .card {
+  border: 4px solid #000; /* Tjock svart ram */
+  border-radius: 0 !important; /* Inga runda hörn! */
+  background-color: rgba(0, 0, 0, 0.6);
+  box-shadow: none;
+}
+
+body.theme-pixel .btn {
+  border-radius: 0 !important;
+  border: 3px solid #000;
+  box-shadow: inset -4px -4px 0px rgba(0, 0, 0, 0.5); /* 3D-block effekt */
+}
+
+/* --- TEMA: NATURE (Skog, Lugn, Grön) --- */
+body.theme-nature {
+  --primary-stone: #2e8b57; /* SeaGreen */
+  --dark-stone: #f0fff0; /* Honeydew (Mycket ljus) */
+  --border-thick: #8b4513; /* SaddleBrown (Trä) */
+  --accent-gold: #006400; /* Mörkgrön accent */
+  --text-white: #2f4f4f; /* Mörk skiffergrå text */
+  background-image: url("https://www.transparenttextures.com/patterns/wood-pattern.png") !important;
+  background-color: #2e8b57 !important;
+  /* Vi tar bort den generella färg-tvingningen här för att inte förstöra filterboxen */
+}
+
+body.theme-nature .navbar {
+  background-color: #006400 !important;
+  border-bottom: 4px solid #8b4513;
+}
+
+/* Korten: Ljus bakgrund, mörk text */
+body.theme-nature .card {
+  background: rgba(255, 255, 240, 0.95);
+  border: 2px solid #8b4513;
+  border-radius: 10px;
+  color: #2f4f4f !important;
+}
+
+/* Korten: Tvinga rubriker och text i korten att vara mörka */
+body.theme-nature .card-body h5,
+body.theme-nature .card-body p,
+body.theme-nature .card-body span {
+  color: #2f4f4f !important;
+  text-shadow: none !important;
+}
+
+/* --- FIXAR DU BAD OM --- */
+
+/* 1. Filter-sektionen: Gör texten VIT ("Klicka på knappar...", "Spelsätt:", "Genre:") */
+body.theme-nature .filter-section .text-white,
+body.theme-nature .filter-section h3,
+body.theme-nature .filter-section span,
+body.theme-nature .filter-section small,
+body.theme-nature .filter-section div {
+  color: #ffffff !important;
+  text-shadow: 1px 1px 2px #000 !important; /* Skugga för läsbarhet */
+}
+
+/* 2. Sektionsrubriker: Gör texten BRUN ("Fortsätt spela & Rekommenderat") */
+body.theme-nature h4 {
+  color: #8b4513 !important; /* SaddleBrown */
+  text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.4) !important; /* Liten ljus kant */
+  border-bottom-color: #8b4513 !important;
+}
+
+/* 3. Hero-boxen (Välkommen): Behåll den vit/guld */
+body.theme-nature .dashboard-hero h2,
+body.theme-nature .dashboard-hero span,
+body.theme-nature .dashboard-hero i {
+  color: #fff !important; /* Vit text i hero */
+}
+body.theme-nature .dashboard-hero h2 {
+  color: #ffd700 !important; /* Guld på rubriken */
+  text-shadow: 2px 2px 0 #000 !important;
+}
+
+/* --- TEMA: OCEAN (Hav, Blått, Bubblor) --- */
+body.theme-ocean {
+  --primary-stone: #0077be; /* Havsblå */
+  --dark-stone: #e0ffff; /* Ljus cyan */
+  --border-thick: #000080; /* Marinblå ram */
+  --accent-gold: #000080; /* Marinblå text */
+  --text-white: #000000; /* Svart text på ljusa kort */
+  background-image: none !important;
+  background: linear-gradient(to bottom, #87cefa, #0077be) !important;
+  background-attachment: fixed !important;
+}
+body.theme-ocean .navbar {
+  background-color: #000080 !important;
+  border-bottom: 2px solid #40e0d0;
+}
+body.theme-ocean .card {
+  background: rgba(255, 255, 255, 0.8);
+  border: 2px solid #40e0d0; /* Turkos */
+  border-radius: 20px;
+  box-shadow: 0 5px 15px rgba(0, 119, 190, 0.5);
+}
+body.theme-ocean .card-body p.card-text,
+body.theme-ocean .text-white {
+  color: #000000 !important;
+  text-shadow: none !important;
+}
+body.theme-ocean h1,
+body.theme-ocean h2 {
+  font-family: "Montserrat", sans-serif !important;
+  color: #fff !important;
+  text-shadow: 0 0 5px #000080;
+}
+
+/* --- FIX: Gör texten i "Visa allt" och "Rensa" vit --- */
+body.theme-ocean .btn-filter {
+  color: #ffffff !important;
+}
+
+/* 1. Filterknapparna ("Visa allt", "Rensa") */
+body.theme-ocean .btn-filter,
+/* 2. Solida knappar ("Fortsätt äventyret") */
+body.theme-ocean .btn-primary,
+/* 3. Alla Badges ("Nivå 1", Typ, Genre) */
+body.theme-ocean .badge.bg-primary {
+  color: #ffffff !important;
+}
+
+/* --- TEMA: RAINBOW (Regnbåge, Färgstarkt) --- */
+body.theme-rainbow {
+  --primary-stone: #ff5100;
+  --dark-stone: #ffffff;
+  --border-thick: #ff5e00;
+  --accent-gold: #9ce0ff; /* Lila */
+  --text-white: #5900ff;
+  background-image: none !important;
+  background: linear-gradient(
+    45deg,
+    #ff0000,
+    #ff7f00,
+    #ffff00,
+    #00ff15,
+    #0000ff,
+    #9400d3
+  ) !important;
+  background-size: 400% 400% !important;
+  animation: rainbowBG 15s ease infinite; /* Rörlig bakgrund! */
+}
+@keyframes rainbowBG {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+body.theme-rainbow .navbar {
+  background: linear-gradient(
+    to right,
+    violet,
+    blue,
+    green,
+    yellow,
+    orange,
+    red
+  ) !important;
+}
+body.theme-rainbow .card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 4px solid white;
+  border-radius: 30px;
+}
+body.theme-rainbow h1,
+body.theme-rainbow h2 {
+  font-family: "Chewy", cursive !important;
+  color: white !important;
+  text-shadow: 2px 2px 0 #000;
+  letter-spacing: 2px;
+}
+body.theme-rainbow .card-body p.card-text,
+body.theme-rainbow .text-white {
+  color: #333 !important;
+  text-shadow: none !important;
+}
