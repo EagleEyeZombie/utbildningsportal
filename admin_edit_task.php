@@ -328,6 +328,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update-task'])) {
             addSortingField(existingQuestions);
         }
     };
+
+   // 1. Fånga 'invalid'-eventet för ALLA fält (även dynamiska)
+    // 'true' på slutet betyder att vi fångar det i "capture phase", vilket krävs för invalid-event
+    document.addEventListener('invalid', function(e) {
+        const target = e.target;
+        
+        // Om felet är att fältet är tomt (valueMissing)
+        if (target.validity.valueMissing) {
+            target.setCustomValidity('Detta fält måste fyllas i.');
+        }
+    }, true);
+
+    // 2. Rensa felmeddelandet direkt när man börjar skriva
+    document.addEventListener('input', function(e) {
+        e.target.setCustomValidity('');
+    });
 </script>
+
+
 
 <?php require_once "include/footer.php"; ?>
