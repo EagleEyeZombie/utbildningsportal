@@ -661,8 +661,12 @@ body.theme-pink {
   --border-thick: #ff69b4;
   --accent-gold: #ff1493;
   --text-white: #5a3e3e;
-  background-image: none !important;
   background-color: #ffe4e1 !important;
+  /* CSS-mönster: Vita prickar på rosa bakgrund */
+  background-image: radial-gradient(#ff69b4 15%, transparent 16%),
+    radial-gradient(#ff69b4 15%, transparent 16%) !important;
+  background-size: 60px 60px !important;
+  background-position: 0 0, 30px 30px !important;
 }
 body.theme-pink .navbar {
   background-color: #ff69b4 !important;
@@ -678,14 +682,44 @@ body.theme-pink h2 {
   text-shadow: 2px 2px 0px #fff;
 }
 
+/* --- FIX: Filterboxen i Pink-temat (Matcha Hero-boxen) --- */
+body.theme-pink .filter-section {
+  /* Samma bakgrunds-gradient som Hero-boxen */
+  background: linear-gradient(to bottom, #5c626c, #4b515a) !important;
+
+  /* Samma ram-färg som Hero-boxen (mörkgrå istället för rosa) */
+  border-color: #ff69b4 !important;
+  border-width: 6px !important;
+}
+
 /* --- TEMA: RETRO (f.d. Grease) --- */
 body.theme-retro {
   --primary-stone: #000000;
   --dark-stone: #222;
   --border-thick: #e60000;
   --accent-gold: #ffffff;
-  background-image: url("https://www.transparenttextures.com/patterns/checkered-pattern.png") !important;
+
   background-color: #1a1a1a !important;
+  /* CSS-mönster: Schackrutor (Svart/Mörkgrå) */
+  background-image: linear-gradient(
+      45deg,
+      #000 25%,
+      transparent 25%,
+      transparent 75%,
+      #000 75%,
+      #000
+    ),
+    linear-gradient(
+      45deg,
+      #000 25%,
+      transparent 25%,
+      transparent 75%,
+      #000 75%,
+      #000
+    ) !important;
+  background-color: #333 !important; /* Den ljusare rutan */
+  background-size: 60px 60px !important;
+  background-position: 0 0, 30px 30px !important;
 }
 body.theme-retro .navbar {
   background-color: #e60000 !important;
@@ -704,9 +738,13 @@ body.theme-cyberpunk {
   --border-thick: #00f3ff;
   --accent-gold: #00f3ff;
   --text-white: #e0e0e0;
-  background-image: none !important;
-  background-color: #000 !important;
-  font-family: "Orbitron", sans-serif;
+
+  background-color: #050505 !important;
+  /* CSS-mönster: Neon-rutnät */
+  background-image: linear-gradient(rgba(0, 243, 255, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 243, 255, 0.2) 1px, transparent 1px) !important;
+  background-size: 40px 40px !important;
+  background-position: -1px -1px !important;
 }
 body.theme-cyberpunk .navbar {
   background-color: #000 !important;
@@ -720,16 +758,32 @@ body.theme-cyberpunk .card {
 
 /* --- TEMA: PIXEL (f.d. Minecraft) --- */
 body.theme-pixel {
-  --primary-stone: #5c3c1e; /* Jordbrun */
-  --dark-stone: #3b230f; /* Mörk jord */
-  --border-thick: #7c7c7c; /* Sten-grå */
-  --accent-gold: #54cc33; /* Gräs-grön */
+  --primary-stone: #5c3c1e;
+  --dark-stone: #3b230f;
+  --border-thick: #7c7c7c;
+  --accent-gold: #54cc33;
   --text-white: #ffffff;
 
-  /* Pixel-aktig bakgrund (Cubes) */
-  background-image: url("https://www.transparenttextures.com/patterns/cubes.png") !important;
   background-color: #5c3c1e !important;
-  font-family: "Exo 2", sans-serif; /* Fallback för brödtext */
+  /* CSS-mönster: Små pixlar */
+  background-image: linear-gradient(
+      45deg,
+      #4a3016 25%,
+      transparent 25%,
+      transparent 75%,
+      #4a3016 75%,
+      #4a3016
+    ),
+    linear-gradient(
+      45deg,
+      #4a3016 25%,
+      transparent 25%,
+      transparent 75%,
+      #4a3016 75%,
+      #4a3016
+    ) !important;
+  background-size: 20px 20px !important;
+  background-position: 0 0, 10px 10px !important;
 }
 
 body.theme-pixel .navbar {
@@ -764,30 +818,55 @@ body.theme-pixel .btn {
 
 /* --- TEMA: NATURE (Skog, Lugn, Grön) --- */
 body.theme-nature {
-  --primary-stone: #2e8b57; /* SeaGreen */
-  --dark-stone: #f0fff0; /* Honeydew (Mycket ljus) */
-  --border-thick: #8b4513; /* SaddleBrown (Trä) */
-  --accent-gold: #006400; /* Mörkgrön accent */
-  --text-white: #2f4f4f; /* Mörk skiffergrå text */
-  background-image: url("https://www.transparenttextures.com/patterns/wood-pattern.png") !important;
-  background-color: #2e8b57 !important;
-  /* Vi tar bort den generella färg-tvingningen här för att inte förstöra filterboxen */
+  --primary-stone: #2e8b57;
+  --dark-stone: #f0fff0;
+  --border-thick: #8b4513;
+  --accent-gold: #006400;
+  --text-white: #2f4f4f;
+
+  background-color: #228b22 !important;
+  /* CSS-mönster: "Lövverk" (överlappande cirklar) */
+  background-image: radial-gradient(
+      circle at 50% 50%,
+      rgba(0, 100, 0, 0.3) 0%,
+      transparent 50%
+    ),
+    radial-gradient(circle at 0% 0%, rgba(0, 80, 0, 0.3) 0%, transparent 40%),
+    radial-gradient(
+      circle at 100% 100%,
+      rgba(0, 80, 0, 0.3) 0%,
+      transparent 40%
+    ) !important;
+  background-size: 100px 100px !important;
 }
 
 body.theme-nature .navbar {
   background-color: #006400 !important;
   border-bottom: 4px solid #8b4513;
+
+  /* FIX: Här ändrar vi accentfärgen lokalt i menyn till VIT */
+  /* Detta gör att "Mina Äventyr" blir vit istället för mörkgrön */
+  --accent-gold: #ffffff;
 }
 
-/* Korten: Ljus bakgrund, mörk text */
+/* Tvinga vanliga länkar att vara ljusa */
+body.theme-nature .navbar .nav-link,
+body.theme-nature .navbar .navbar-brand,
+body.theme-nature .navbar .navbar-text {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+body.theme-nature .navbar .nav-link:hover,
+body.theme-nature .navbar .active {
+  color: #ffffff !important; /* Vit vid hover */
+}
+
+/* KORTEN (Ljus bakgrund, mörk text) */
 body.theme-nature .card {
   background: rgba(255, 255, 240, 0.95);
   border: 2px solid #8b4513;
   border-radius: 10px;
   color: #2f4f4f !important;
 }
-
-/* Korten: Tvinga rubriker och text i korten att vara mörka */
 body.theme-nature .card-body h5,
 body.theme-nature .card-body p,
 body.theme-nature .card-body span {
@@ -795,62 +874,89 @@ body.theme-nature .card-body span {
   text-shadow: none !important;
 }
 
-/* --- FIXAR DU BAD OM --- */
-
-/* 1. Filter-sektionen: Gör texten VIT ("Klicka på knappar...", "Spelsätt:", "Genre:") */
+/* 1. Filter-sektionen: Vit text */
 body.theme-nature .filter-section .text-white,
 body.theme-nature .filter-section h3,
 body.theme-nature .filter-section span,
 body.theme-nature .filter-section small,
 body.theme-nature .filter-section div {
   color: #ffffff !important;
-  text-shadow: 1px 1px 2px #000 !important; /* Skugga för läsbarhet */
+  text-shadow: 1px 1px 2px #000 !important;
 }
 
-/* 2. Sektionsrubriker: Gör texten BRUN ("Fortsätt spela & Rekommenderat") */
+/* 2. Rubriker: Brun text */
 body.theme-nature h4 {
-  color: #8b4513 !important; /* SaddleBrown */
-  text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.4) !important; /* Liten ljus kant */
+  color: #8b4513 !important;
+  text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.4) !important;
   border-bottom-color: #8b4513 !important;
 }
 
-/* 3. Hero-boxen (Välkommen): Behåll den vit/guld */
+/* 3. Hero-boxen: Vit text */
 body.theme-nature .dashboard-hero h2,
 body.theme-nature .dashboard-hero span,
 body.theme-nature .dashboard-hero i {
-  color: #fff !important; /* Vit text i hero */
+  color: #fff !important;
 }
 body.theme-nature .dashboard-hero h2 {
-  color: #ffd700 !important; /* Guld på rubriken */
+  color: #ffd700 !important; /* Guld */
   text-shadow: 2px 2px 0 #000 !important;
 }
 
 /* --- TEMA: OCEAN (Hav, Blått, Bubblor) --- */
 body.theme-ocean {
-  --primary-stone: #0077be; /* Havsblå */
-  --dark-stone: #e0ffff; /* Ljus cyan */
-  --border-thick: #000080; /* Marinblå ram */
-  --accent-gold: #000080; /* Marinblå text */
-  --text-white: #000000; /* Svart text på ljusa kort */
-  background-image: none !important;
-  background: linear-gradient(to bottom, #87cefa, #0077be) !important;
+  --primary-stone: #0077be;
+  --dark-stone: #e0ffff;
+  --border-thick: #000080;
+  --accent-gold: #000080;
+  --text-white: #000000;
+
+  background-color: #0077be !important;
+  /* CSS-mönster: Vågor/Vatten */
+  background-image: repeating-radial-gradient(
+      circle at 0 0,
+      transparent 0,
+      #0077be 10px
+    ),
+    repeating-linear-gradient(#0099cc, #0077be) !important;
   background-attachment: fixed !important;
+  color: #000 !important;
 }
 body.theme-ocean .navbar {
   background-color: #000080 !important;
   border-bottom: 2px solid #40e0d0;
+
+  /* FIX: Här ändrar vi accentfärgen lokalt i menyn till VIT */
+  /* Detta gör att "Mina Äventyr" blir vit istället för mörkblå */
+  --accent-gold: #ffffff;
 }
+
+/* Tvinga vanliga länkar att vara ljusa */
+body.theme-ocean .navbar .nav-link,
+body.theme-ocean .navbar .navbar-brand,
+body.theme-ocean .navbar .navbar-text {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+body.theme-ocean .navbar .nav-link:hover {
+  color: #40e0d0 !important; /* Turkos vid hover */
+}
+
+/* KORTEN */
 body.theme-ocean .card {
-  background: rgba(255, 255, 255, 0.8);
-  border: 2px solid #40e0d0; /* Turkos */
+  background: rgba(255, 255, 255, 0.85);
+  border: 2px solid #40e0d0;
   border-radius: 20px;
   box-shadow: 0 5px 15px rgba(0, 119, 190, 0.5);
+  color: #000 !important;
 }
+
+/* Brödtext i korten */
 body.theme-ocean .card-body p.card-text,
 body.theme-ocean .text-white {
   color: #000000 !important;
   text-shadow: none !important;
 }
+
+/* Rubriker */
 body.theme-ocean h1,
 body.theme-ocean h2 {
   font-family: "Montserrat", sans-serif !important;
@@ -858,51 +964,44 @@ body.theme-ocean h2 {
   text-shadow: 0 0 5px #000080;
 }
 
-/* --- FIX: Gör texten i "Visa allt" och "Rensa" vit --- */
-body.theme-ocean .btn-filter {
-  color: #ffffff !important;
-}
-
-/* 1. Filterknapparna ("Visa allt", "Rensa") */
+/* Element som ska vara VITA */
 body.theme-ocean .btn-filter,
-/* 2. Solida knappar ("Fortsätt äventyret") */
 body.theme-ocean .btn-primary,
-/* 3. Alla Badges ("Nivå 1", Typ, Genre) */
 body.theme-ocean .badge.bg-primary {
   color: #ffffff !important;
 }
-
-/* --- TEMA: RAINBOW (Regnbåge, Färgstarkt) --- */
+/* --- TEMA: RAINBOW (Böjd regnbåge, Statisk) --- */
 body.theme-rainbow {
   --primary-stone: #ff5100;
   --dark-stone: #ffffff;
   --border-thick: #ff5e00;
-  --accent-gold: #9ce0ff; /* Lila */
+  --accent-gold: #0099ff; /* Klarblå text för kontrast */
   --text-white: #5900ff;
-  background-image: none !important;
-  background: linear-gradient(
-    45deg,
-    #ff0000,
-    #ff7f00,
-    #ffff00,
-    #00ff15,
-    #0000ff,
-    #9400d3
+
+  background-color: #ff5100 !important; /* Fallback-färg */
+
+  /* ÄNDRAT: repeating-radial-gradient skapar böjda linjer (bågar) */
+  /* "circle at 0% 0%" betyder att cirkeln börjar i övre vänstra hörnet */
+  background-image: repeating-radial-gradient(
+    circle at 50% 99%,
+    #ff0000 0,
+    #ff0000 40px,
+    #ff7f00 40px,
+    #ff7f00 80px,
+    #ffff00 80px,
+    #ffff00 120px,
+    #00ff00 120px,
+    #00ff00 160px,
+    #0000ff 160px,
+    #0000ff 200px
   ) !important;
-  background-size: 400% 400% !important;
-  animation: rainbowBG 15s ease infinite; /* Rörlig bakgrund! */
+
+  background-attachment: fixed !important; /* Bakgrunden stannar när du scrollar */
+  background-size: cover !important;
+  /* Ingen animation här eftersom du ville ha den stilla */
 }
-@keyframes rainbowBG {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
+
+/* Navbar - Behåller din linjära gradient här för snygg kontrast */
 body.theme-rainbow .navbar {
   background: linear-gradient(
     to right,
@@ -913,12 +1012,22 @@ body.theme-rainbow .navbar {
     orange,
     red
   ) !important;
+  border-bottom: 4px solid #fff;
 }
+
 body.theme-rainbow .card {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(
+    255,
+    255,
+    255,
+    0.95
+  ); /* Lite mindre genomskinlig för läsbarhet */
   border: 4px solid white;
   border-radius: 30px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
+
+/* Rubriker */
 body.theme-rainbow h1,
 body.theme-rainbow h2 {
   font-family: "Chewy", cursive !important;
@@ -926,8 +1035,17 @@ body.theme-rainbow h2 {
   text-shadow: 2px 2px 0 #000;
   letter-spacing: 2px;
 }
+
+/* Brödtext - Svart för att synas mot vita kort */
 body.theme-rainbow .card-body p.card-text,
 body.theme-rainbow .text-white {
   color: #333 !important;
   text-shadow: none !important;
+}
+
+/* Knappar - Gör dem färgglada */
+body.theme-rainbow .btn-primary {
+  background-color: #0000ff;
+  border-color: #fff;
+  color: #fff;
 }
