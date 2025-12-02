@@ -9,6 +9,9 @@ if (!isset($_SESSION['user_id'])) {
 
 $studentId = $_SESSION['user_id'];
 
+// Hämta XP-progress data
+$xpProgress = $user_obj->getLevelProgress($_SESSION['user_xp']);
+
 // --- UPPDATERA DATA & KOLLA BADGES ---
 $stmt = $pdo->prepare("SELECT u_xp, u_level FROM users WHERE u_id = ?");
 $stmt->execute([$studentId]);
@@ -71,10 +74,31 @@ function buildUrl($params) {
                     </div>
                 </div>
 
-                <div class="hero-center text-center flex-grow-1">
-                    <h2 class="fw-bold mb-0" style="font-family: 'Cinzel Decorative', serif; color: var(--accent-gold); text-shadow: 2px 2px 0 #000; font-size: 1.8rem;">
+                <div class="hero-center text-center flex-grow-1 d-flex flex-column justify-content-center">
+                    <h2 class="fw-bold mb-2" style="font-family: 'Cinzel Decorative', serif; color: var(--accent-gold); text-shadow: 2px 2px 0 #000; font-size: 1.8rem;">
                         Välkommen, <?php echo htmlspecialchars($_SESSION['username']); ?>!
                     </h2>
+                    
+                    <div class="w-75 mx-auto">
+                        <div class="progress" style="height: 20px; background-color: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px;">
+                            <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" 
+                                 style="width: <?= $xpProgress['percent'] ?>%;" 
+                                 aria-valuenow="<?= $xpProgress['percent'] ?>" aria-valuemin="0" aria-valuemax="100">
+                                 <span style="font-size: 0.8rem; text-shadow: 1px 1px 2px #000; font-weight: bold;"><?= $xpProgress['percent'] ?>%</span>
+                            </div>
+                        </div>
+                        <div class="mt-1 text-white small" style="text-shadow: 1px 1px 2px #000;">
+                            <?php if ($xpProgress['is_max']): ?>
+                                <span class="text-warning">Max Level! Du är en legend!</span>
+                            <?php else: ?>
+                                <span><?= $xpProgress['current'] ?> / <?= $xpProgress['target'] ?> XP</span>
+                                <span class="opacity-75 mx-1">|</span> 
+                                <span class="text-warning fw-bold"><?= $xpProgress['needed'] ?> XP till nästa nivå</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
                 </div>
 
                 <div class="hero-right pe-lg-3 text-lg-end text-center" style="min-width: 150px;">

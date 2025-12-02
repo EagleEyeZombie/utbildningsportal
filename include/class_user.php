@@ -368,5 +368,62 @@ class User {
             return ['success' => false, 'error' => 'Kunde inte byta tema.'];
         }
     }
+
+    // --- HÄMTA LEVEL PROGRESS (För Dashboard) ---
+    public function getLevelProgress($currentXp) {
+        try {
+            // Hämta alla nivågränser
+            $stmt = $this->pdo->query("SELECT lc_level, lc_xp_required FROM level_config ORDER BY lc_level ASC");
+            $levels = $stmt->fetchAll(PDO::FETCH_KEY_PAIR); // [1=>0, 2=>100, 3=>300...]
+
+            $currentLevelStart = 0;
+            $nextLevelTarget = 100; // Standard om db är tom
+            $found = false;
+
+            // Hitta var vi befinner oss i stegen
+            foreach ($levels as $lvl => $req) {
+                if ($currentXp >= $req) {
+                    $currentLevelStart = $req;
+                } else {
+                    $nextLevelTarget = $req;
+                    $found = true;
+                    break;
+                }
+            }
+
+            // Om vi nått max level (inga högre krav hittades)
+            if (!$found) {
+                return [
+                    'percent' => 100,
+                    'current' => $currentXp,
+                    'target' => $currentXp,
+                    'needed' => 0,
+                    'is_max' => true
+                ];
+            }
+
+            // Beräkna procent för stapeln
+            // Ex: Level 2 (100xp) till Level 3 (300xp). Range = 200.
+            // Har 150 xp. Har tagit 50 av 200 på denna nivå. = 25%
+            $levelRange = $nextLevelTarget - $currentLevelStart;
+            $xpGainedInLevel = $currentXp - $currentLevelStart;
+            
+            $percent = 0;
+            if ($levelRange > 0) {
+                $percent = round(($xpGainedInLevel / $levelRange) * 100);
+            }
+
+            return [
+                'percent' => $percent,
+                'current' => $currentXp,
+                'target' => $nextLevelTarget,
+                'needed' => $nextLevelTarget - $currentXp,
+                'is_max' => false
+            ];
+
+        } catch (Exception $e) {
+            return ['percent' => 0, 'current' => 0, 'target' => 100, 'needed' => 100, 'is_max' => false];
+        }
+    }
 }
 ?>
