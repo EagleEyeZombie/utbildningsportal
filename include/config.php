@@ -1,4 +1,6 @@
 <?php
+
+ob_start(); // <-- NYTT: Starta Output Buffering (Fixar header-problem)
 // --- SESSIONS-INSTÄLLNINGAR (SÄKERHET) ---
 
 // 1. Sätt namn på sessionen (säkerhetspraxis)
