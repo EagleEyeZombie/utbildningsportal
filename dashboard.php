@@ -140,9 +140,9 @@ function buildUrl($params) {
                         <i class="bi bi-eye-slash"></i> Dölj låsta
                     </a>
                 <?php else: ?>
-                    <a href="<?= buildUrl(['view' => 'all']) ?>" class="btn btn-filter-active btn-sm" style="border-color: #fff; min-width: 100px;">
-                        <i class="bi bi-eye"></i> Visa allt!
-                    </a>
+                    <a href="dashboard.php?view=all" class="btn btn-filter btn-sm btn-filter-active" style="min-width: 100px;">
+    <i class="bi bi-eye"></i> Visa allt!
+</a>
                 <?php endif; ?>
             </div>
             <div class="col-12 col-md-6 order-1 order-md-2 text-center">
