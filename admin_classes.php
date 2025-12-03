@@ -2,15 +2,8 @@
 require_once "include/header.php";
 
 // --- SÄKERHETSVAKT ---
-if (!isset($_SESSION['user_id'])) {
-    // Inte inloggad alls -> Gå till Login
+if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
     header("Location: login.php");
-    exit;
-}
-
-if ($_SESSION['role_level'] < 5) {
-    // Inloggad men fel behörighet (t.ex. Elev försöker nå Admin) -> Gå till 403
-    header("Location: 403.php");
     exit;
 }
 
@@ -53,8 +46,11 @@ $allTeachers = $school_obj->getAllTeachers();
 
 <div class="container mt-5">
     
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1><i class="bi bi-people-fill"></i> Hantera Klasser</h1>
+    <div class="d-flex align-items-center mb-4">
+        <a href="admin_dashboard.php" class="btn btn-outline-dark me-3 fw-bold">
+            <i class="bi bi-arrow-left"></i> Tillbaka till Adminpanelen
+        </a>
+        <h1 class="m-0"><i class="bi bi-people-fill"></i> Hantera Klasser</h1>
     </div>
 
     <div class="card shadow-sm mb-5">

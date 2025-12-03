@@ -7,30 +7,37 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
     exit;
 }
 
-// 1. HÄMTA PARAMETRAR FRÅN URL
+// 1. HÄMTA PARAMETRAR FRÅN URL (ELLER SÄTT STANDARD)
 $search   = isset($_GET['search']) ? cleanInput($_GET['search']) : '';
 $role     = isset($_GET['role']) ? cleanInput($_GET['role']) : 'all';
-$limit    = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
+$limit    = isset($_GET['limit']) ? (int)$_GET['limit'] : 20; // Standard 20
 $page     = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $sortCol  = isset($_GET['sort']) ? cleanInput($_GET['sort']) : 'u_name';
 $sortDir  = isset($_GET['dir']) ? cleanInput($_GET['dir']) : 'ASC';
 
+// Validera limit
 if (!in_array($limit, [20, 40, 80])) $limit = 20;
+
 $offset = ($page - 1) * $limit;
 
 // 2. HÄMTA DATA
 $allRoles = $pdo->query("SELECT * FROM roles")->fetchAll();
+
 $users = $user_obj->getUsersFiltered($search, $role, $sortCol, $sortDir, $limit, $offset);
 $totalUsers = $user_obj->getUsersCountFiltered($search, $role);
 $totalPages = ceil($totalUsers / $limit);
 
+// Hjälpfunktion för att bygga sorteringslänkar
 function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role, $limit) {
     $newDir = ($dbCol === $currentCol && $currentDir === 'ASC') ? 'DESC' : 'ASC';
+    
     $icon = '';
     if ($dbCol === $currentCol) {
         $icon = ($currentDir === 'ASC') ? ' <i class="bi bi-caret-up-fill"></i>' : ' <i class="bi bi-caret-down-fill"></i>';
     }
+    
     $url = "?sort=$dbCol&dir=$newDir&search=$search&role=$role&limit=$limit&page=1";
+    
     return "<a href='$url' class='text-dark text-decoration-none fw-bold'>$displayText $icon</a>";
 }
 ?>
@@ -38,7 +45,12 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role
 <div class="container mt-5 mb-5">
     
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 style="font-family: 'Cinzel Decorative', serif; color: var(--accent-gold);">Hantera Användare</h1>
+        <div class="d-flex align-items-center">
+            <a href="admin_dashboard.php" class="btn btn-outline-dark me-3 fw-bold">
+                <i class="bi bi-arrow-left"></i> Tillbaka till Adminpanelen
+            </a>
+            <h1 class="m-0"><i class="bi bi-people"></i> Hantera Användare</h1>
+        </div>
         <a href="register.php" class="btn btn-success"><i class="bi bi-person-plus"></i> Skapa ny användare</a>
     </div>
 
@@ -80,8 +92,8 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role
                 </div>
 
                 <div class="col-md-3 text-md-end">
-                    <button type="submit" class="btn btn-primary w-100 mb-1">Sök</button>
-                    <a href="user-management.php" class="btn btn-outline-dark w-100 btn-sm">Rensa val</a>
+                    <button type="submit" class="btn btn-primary w-100 mb-1">Filtrera</button>
+                    <a href="user-management.php" class="btn btn-outline-dark w-100 btn-sm fw-bold">Rensa filter</a>
                 </div>
 
                 <input type="hidden" name="sort" value="<?= $sortCol ?>">

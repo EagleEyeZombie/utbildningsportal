@@ -32,7 +32,12 @@ $allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLeve
 
 <div class="container mt-5 mb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Hantera Uppgifter</h1>
+        <div class="d-flex align-items-center">
+            <a href="admin_dashboard.php" class="btn btn-outline-dark me-3 fw-bold">
+                <i class="bi bi-arrow-left"></i> Tillbaka till Adminpanelen
+            </a>
+            <h1 class="m-0"><i class="bi bi-pencil-square"></i> Hantera Uppgifter</h1>
+        </div>
         <a href="admin_create_task.php" class="btn btn-success">
             <i class="bi bi-plus-circle"></i> Skapa ny uppgift
         </a>
@@ -98,11 +103,9 @@ $allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLeve
                     </select>
                 </div>
                 
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">Filtrera</button>
-                </div>
-                <div class="col-md-1">
-                    <a href="admin_tasks.php" class="btn btn-outline-secondary w-100" title="Nollställ">X</a>
+                <div class="col-md-3 text-md-end">
+                    <button type="submit" class="btn btn-primary w-100 mb-1">Filtrera</button>
+                    <a href="admin_tasks.php" class="btn btn-outline-dark w-100 btn-sm fw-bold">Rensa filter</a>
                 </div>
             </form>
         </div>
