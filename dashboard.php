@@ -81,7 +81,7 @@ function buildUrl($params) {
                     
                     <div class="w-75 mx-auto">
                         <div class="progress" style="height: 20px; background-color: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px;">
-                            <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
+                            <div class="progress-bar bg-success" 
                                  role="progressbar" 
                                  style="width: <?= $xpProgress['percent'] ?>%;" 
                                  aria-valuenow="<?= $xpProgress['percent'] ?>" aria-valuemin="0" aria-valuemax="100">
@@ -140,7 +140,7 @@ function buildUrl($params) {
                         <i class="bi bi-eye-slash"></i> Dölj låsta
                     </a>
                 <?php else: ?>
-                    <a href="<?= buildUrl(['view' => 'all']) ?>" class="btn btn-filter btn-sm" style="background-color: var(--accent-gold); color: #2c2c2c; border-color: #fff; min-width: 100px;">
+                    <a href="<?= buildUrl(['view' => 'all']) ?>" class="btn btn-filter-active btn-sm" style="border-color: #fff; min-width: 100px;">
                         <i class="bi bi-eye"></i> Visa allt!
                     </a>
                 <?php endif; ?>

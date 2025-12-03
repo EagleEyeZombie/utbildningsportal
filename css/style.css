@@ -92,7 +92,6 @@ body {
 }
 
 .card:hover {
-  transform: translateY(-5px);
   box-shadow: 0 12px 25px rgba(0, 0, 0, 0.7);
   background: linear-gradient(145deg, #4a5463, #556070);
 }
@@ -171,7 +170,6 @@ body {
 }
 
 .hero-stat:hover {
-  transform: scale(1.05);
   background-color: rgba(0, 0, 0, 0.6);
 }
 
@@ -190,7 +188,6 @@ body {
 .mini-badge:hover {
   background-color: rgba(255, 215, 0, 0.2);
   border-color: var(--accent-gold);
-  transform: scale(1.1);
   cursor: help;
 }
 
@@ -245,7 +242,6 @@ body {
   background-color: var(--primary-stone);
   border-color: var(--accent-gold);
   color: var(--accent-gold);
-  transform: translateY(-1px);
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.6);
 }
 
@@ -255,13 +251,13 @@ body {
   color: #2c2c2c;
   font-weight: 800;
   box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-  transform: scale(1.05);
 }
 
 .btn-filter-active:hover {
-  background-color: #e6c200;
-  color: #000;
-  border-color: #fff;
+  background-color: #2c2c2c; /* Mörkgrå/Svart (samma som din textfärg förut) */
+  color: var(--accent-gold); /* Guldtext */
+  border-color: var(--accent-gold); /* Guldram */
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5); /* Inre skugga för djup */
 }
 
 /* Vertikal linje på desktop */
@@ -306,7 +302,6 @@ body {
 .list-group-item:hover {
   background-color: rgba(60, 68, 80, 1);
   border-color: var(--accent-gold);
-  transform: scale(1.01);
 }
 .list-group-item input[type="radio"]:checked + span {
   color: var(--accent-gold);
@@ -328,14 +323,14 @@ body {
 }
 
 .btn-primary {
-  background-color: var(--accent-gold);
+  background-color: rgba(60, 68, 80, 0.9);
+  color: var(--accent-gold);
   border-color: var(--accent-gold);
-  color: #2c2c2c;
+  border-width: 2px;
 }
 .btn-primary:hover {
-  background-color: var(--accent-gold-dark);
-  border-color: var(--accent-gold-dark);
-  color: #000;
+  background-color: var(--accent-gold);
+  color: #2c2c2c;
 }
 .btn-success {
   background-color: var(--success-green);
