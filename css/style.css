@@ -1068,6 +1068,68 @@ footer {
 }
 
 /* -------------------------------------------------------------------------- */
+/* RESPONSIVITET: ADMIN & TABELLER                                    */
+/* -------------------------------------------------------------------------- */
+
+/* 1. Fixa Admin-footern (Gör texten ljus även i admin-läget) */
+body.admin-mode footer p,
+body.admin-mode footer span {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* 2. MOBIL: Gör om Tabeller till Kort (Cards) */
+@media (max-width: 768px) {
+  /* Dölj tabellhuvudet */
+  .table thead {
+    display: none;
+  }
+
+  /* Gör varje rad (tr) till ett "Kort" */
+  .table tbody tr {
+    display: block;
+    margin-bottom: 1rem;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    padding: 15px;
+  }
+
+  /* Gör varje cell (td) till en rad i kortet */
+  .table tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border: none;
+    border-bottom: 1px solid #eee;
+    text-align: right;
+  }
+
+  .table tbody td:last-child {
+    border-bottom: none;
+    justify-content: center; /* Centrera knapparna i botten */
+    padding-top: 15px;
+  }
+
+  /* Visa rubriken (data-label) till vänster */
+  .table tbody td::before {
+    content: attr(data-label); /* Hämtar texten från PHP-koden */
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-right: 15px;
+    text-align: left;
+  }
+
+  /* Visa dolda kolumner igen på mobil (eftersom vi har plats vertikalt nu) */
+  .d-none.d-md-table-cell {
+    display: flex !important;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* GLOBAL FIX: LÄSBARHET (Gäller alla teman)                          */
 /* -------------------------------------------------------------------------- */
 

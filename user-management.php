@@ -7,51 +7,44 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
     exit;
 }
 
-// 1. HÄMTA PARAMETRAR FRÅN URL (ELLER SÄTT STANDARD)
+// 1. HÄMTA PARAMETRAR
 $search   = isset($_GET['search']) ? cleanInput($_GET['search']) : '';
 $role     = isset($_GET['role']) ? cleanInput($_GET['role']) : 'all';
-$limit    = isset($_GET['limit']) ? (int)$_GET['limit'] : 20; // Standard 20
+$limit    = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
 $page     = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $sortCol  = isset($_GET['sort']) ? cleanInput($_GET['sort']) : 'u_name';
 $sortDir  = isset($_GET['dir']) ? cleanInput($_GET['dir']) : 'ASC';
 
-// Validera limit
 if (!in_array($limit, [20, 40, 80])) $limit = 20;
-
 $offset = ($page - 1) * $limit;
 
 // 2. HÄMTA DATA
 $allRoles = $pdo->query("SELECT * FROM roles")->fetchAll();
-
 $users = $user_obj->getUsersFiltered($search, $role, $sortCol, $sortDir, $limit, $offset);
 $totalUsers = $user_obj->getUsersCountFiltered($search, $role);
 $totalPages = ceil($totalUsers / $limit);
 
-// Hjälpfunktion för att bygga sorteringslänkar
 function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role, $limit) {
     $newDir = ($dbCol === $currentCol && $currentDir === 'ASC') ? 'DESC' : 'ASC';
-    
     $icon = '';
     if ($dbCol === $currentCol) {
         $icon = ($currentDir === 'ASC') ? ' <i class="bi bi-caret-up-fill"></i>' : ' <i class="bi bi-caret-down-fill"></i>';
     }
-    
     $url = "?sort=$dbCol&dir=$newDir&search=$search&role=$role&limit=$limit&page=1";
-    
     return "<a href='$url' class='text-dark text-decoration-none fw-bold'>$displayText $icon</a>";
 }
 ?>
 
 <div class="container mt-5 mb-5">
     
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div class="d-flex align-items-center">
-            <a href="admin_dashboard.php" class="btn btn-outline-dark me-3 fw-bold">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-center mb-4 gap-3">
+        <div class="d-flex flex-column flex-md-row align-items-center gap-3 text-center text-md-start">
+            <a href="admin_dashboard.php" class="btn btn-outline-dark fw-bold">
                 <i class="bi bi-arrow-left"></i> Tillbaka till Adminpanelen
             </a>
-            <h1 class="m-0"><i class="bi bi-people"></i> Hantera Användare</h1>
+            <h1 class="m-0"><i class="bi bi-people d-none d-md-inline me-2"></i> Hantera Användare</h1>
         </div>
-        <a href="register.php" class="btn btn-success"><i class="bi bi-person-plus"></i> Skapa ny användare</a>
+        <a href="register.php" class="btn btn-success col-12 col-lg-auto"><i class="bi bi-person-plus"></i> Skapa ny användare</a>
     </div>
 
     <?php if (isset($_GET['deleted']) && $_GET['deleted'] == 'success'): ?>
@@ -65,14 +58,14 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role
         <div class="card-body bg-light">
             <form action="user-management.php" method="GET" class="row g-2 align-items-center">
                 
-                <div class="col-md-4">
+                <div class="col-12 col-lg-4">
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" name="search" class="form-control" placeholder="Sök namn eller e-post..." value="<?= htmlspecialchars($search) ?>">
+                        <input type="text" name="search" class="form-control" placeholder="Sök namn..." value="<?= htmlspecialchars($search) ?>">
                     </div>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-12 col-lg-3">
                     <select name="role" class="form-select" onchange="this.form.submit()">
                         <option value="all" <?= $role == 'all' ? 'selected' : '' ?>>Alla Roller</option>
                         <?php foreach($allRoles as $r): ?>
@@ -83,17 +76,17 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role
                     </select>
                 </div>
 
-                <div class="col-md-2">
+                <div class="col-12 col-lg-2">
                     <select name="limit" class="form-select" onchange="this.form.submit()">
-                        <option value="20" <?= $limit == 20 ? 'selected' : '' ?>>20 per sida</option>
-                        <option value="40" <?= $limit == 40 ? 'selected' : '' ?>>40 per sida</option>
-                        <option value="80" <?= $limit == 80 ? 'selected' : '' ?>>80 per sida</option>
+                        <option value="20" <?= $limit == 20 ? 'selected' : '' ?>>20 / sida</option>
+                        <option value="40" <?= $limit == 40 ? 'selected' : '' ?>>40 / sida</option>
+                        <option value="80" <?= $limit == 80 ? 'selected' : '' ?>>80 / sida</option>
                     </select>
                 </div>
 
-                <div class="col-md-3 text-md-end">
-                    <button type="submit" class="btn btn-primary w-100 mb-1">Filtrera</button>
-                    <a href="user-management.php" class="btn btn-outline-dark w-100 btn-sm fw-bold">Rensa filter</a>
+                <div class="col-12 col-lg-3 text-lg-end d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1">Filtrera</button>
+                    <a href="user-management.php" class="btn btn-outline-dark flex-grow-1 fw-bold">Rensa</a>
                 </div>
 
                 <input type="hidden" name="sort" value="<?= $sortCol ?>">
@@ -107,7 +100,7 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role
             <span class="text-muted">Visar <strong><?= count($users) ?></strong> av <strong><?= $totalUsers ?></strong> användare</span>
         </div>
         <div class="card-body p-0">
-            <div class="table-responsive">
+            <div class=""> 
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
@@ -129,11 +122,15 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role
                                     if ($user['r_name'] == 'Elev') $roleClass = 'bg-success';
                                 ?>
                                 <tr>
-                                    <td class="fw-bold"><?= htmlspecialchars($user['u_name']) ?></td>
-                                    <td><?= htmlspecialchars($user['u_fname'] . ' ' . $user['u_lname']) ?></td>
-                                    <td><?= htmlspecialchars($user['u_email']) ?></td>
-                                    <td><span class="badge <?= $roleClass ?>"><?= htmlspecialchars($user['r_name']) ?></span></td>
-                                    <td>
+                                    <td data-label="Användarnamn" class="fw-bold"><?= htmlspecialchars($user['u_name']) ?></td>
+                                    
+                                    <td data-label="Namn"><?= htmlspecialchars($user['u_fname'] . ' ' . $user['u_lname']) ?></td>
+                                    
+                                    <td data-label="E-post"><?= htmlspecialchars($user['u_email']) ?></td>
+                                    
+                                    <td data-label="Roll"><span class="badge <?= $roleClass ?>"><?= htmlspecialchars($user['r_name']) ?></span></td>
+                                    
+                                    <td data-label="XP / Takt">
                                         <small class="text-muted">
                                             <?= $user['u_xp'] ?> XP 
                                             <?php if(isset($user['ps_name']) && $user['ps_name'] != 'Normal'): ?>
@@ -141,7 +138,8 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role
                                             <?php endif; ?>
                                         </small>
                                     </td>
-                                    <td class="text-end">
+                                    
+                                    <td data-label="Åtgärd" class="text-end">
                                         <a href="edit-user.php?uid=<?= $user['u_id'] ?>" class="btn btn-sm btn-primary me-1">
                                             <i class="bi bi-pencil"></i> Redigera
                                         </a>
@@ -166,15 +164,17 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role
         <?php if ($totalPages > 1): ?>
         <div class="card-footer bg-white d-flex justify-content-center py-3">
             <nav>
-                <ul class="pagination mb-0">
+                <ul class="pagination mb-0 flex-wrap justify-content-center gap-1">
                     <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
                         <a class="page-link" href="?page=<?= $page - 1 ?>&search=<?= $search ?>&role=<?= $role ?>&limit=<?= $limit ?>&sort=<?= $sortCol ?>&dir=<?= $sortDir ?>">Föregående</a>
                     </li>
+                    
                     <?php for($i = 1; $i <= $totalPages; $i++): ?>
                         <li class="page-item <?= ($page == $i) ? 'active' : '' ?>">
                             <a class="page-link" href="?page=<?= $i ?>&search=<?= $search ?>&role=<?= $role ?>&limit=<?= $limit ?>&sort=<?= $sortCol ?>&dir=<?= $sortDir ?>"><?= $i ?></a>
                         </li>
                     <?php endfor; ?>
+                    
                     <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
                         <a class="page-link" href="?page=<?= $page + 1 ?>&search=<?= $search ?>&role=<?= $role ?>&limit=<?= $limit ?>&sort=<?= $sortCol ?>&dir=<?= $sortDir ?>">Nästa</a>
                     </li>
