@@ -97,31 +97,25 @@ $newBadges = [];
 $nextTaskId = null;
 $leveledUp = false;
 $newLevel = $_SESSION['user_level'];
-$gainedXp = 0; // Variabel för att visa hur mycket XP man faktiskt fick
+$gainedXp = 0; 
 
-// Spara resultatet först (så att det räknas in för badges)
+// Spara resultatet
 $saved = $task_obj->saveTaskResult($userId, $taskId, $scorePercent, $passed);
 
 if ($passed) {
-    // --- NY LOGIK: Använd class_user för att ge XP och kolla Level ---
-    // Detta hanterar både multiplikator (progress_speeds) och databas-nivåer
     $xpResult = $user_obj->addXpAndCheckLevelup($userId, $task['t_xp']);
     
     if ($xpResult) {
-        $gainedXp = $xpResult['gained_xp']; // XP inkl. bonus
+        $gainedXp = $xpResult['gained_xp'];
         $leveledUp = $xpResult['leveled_up'];
         $newLevel = $xpResult['new_level'];
-        
-        // --- GAMIFICATION: Kolla om några badges låstes upp ---
-        // Vi skickar med den nya totala XP:n
         $newBadges = $task_obj->checkAchievements($userId, $xpResult['new_xp']);
     }
 
-    // --- HITTA NÄSTA UPPGIFT ---
+    // Hitta nästa uppgift
     $currentTaskLevel = $task['tl_level'];
     $targetTaskLevel = $currentTaskLevel + 1;
     
-    // Vi försöker hitta en uppgift av samma typ och genre på nästa nivå
     $sqlNext = "SELECT t_id FROM tasks 
                 JOIN task_levels ON tasks.t_level_fk = task_levels.tl_id 
                 WHERE t_type_fk = ? AND task_levels.tl_level = ? ";
@@ -143,7 +137,7 @@ if ($passed) {
 }
 ?>
 
-<div class="container mt-5">
+<div class="container mt-5 task-result-page">
     <div class="row justify-content-center">
         <div class="col-md-6">
             <div class="card shadow text-center">

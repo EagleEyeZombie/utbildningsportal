@@ -327,8 +327,11 @@ body {
   border-width: 2px;
 }
 .btn-primary:hover {
-  background-color: var(--accent-gold);
-  color: #2c2c2c;
+  /* ÄNDRAT: Gör bakgrunden mörkare (nästan svart) istället för Guld */
+  background-color: #1a1d23 !important;
+  border-color: var(--accent-gold-dark);
+  color: var(--accent-gold);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); /* Liten skugga för effekt */
 }
 .btn-success {
   background-color: var(--success-green);
@@ -1127,6 +1130,32 @@ body.admin-mode footer span {
   .d-none.d-md-table-cell {
     display: flex !important;
   }
+}
+
+/* --- FIX: BÄTTRE PLATS FÖR TEXT PÅ MOBIL (task_view.php) --- */
+@media (max-width: 768px) {
+  .task-instruction-panel {
+    padding: 0.5rem !important; /* Minskar från 2.5rem till 1.25rem */
+  }
+
+  /* Justera även textstorleken lite om den känns för stor */
+  .task-instruction-panel .lead {
+    font-size: 1.1rem !important; /* Något mindre text för att rymma mer */
+  }
+} /* --- FIX: BÄTTRE PLATS FÖR TEXT PÅ MOBIL (task_view.php) --- */
+
+/* --- FIX: SVART TEXT ENDAST PÅ RESULTATSIDAN --- */
+
+/* På resultatsidan (som har vit bakgrund) ska knappen vara mörk */
+.task-result-page .btn-outline-secondary {
+  color: #212529 !important; /* Mörkgrå/Svart text */
+  border-color: #6c757d;
+}
+
+/* Vid hover blir den grå med vit text */
+.task-result-page .btn-outline-secondary:hover {
+  background-color: #6c757d;
+  color: #ffffff !important;
 }
 
 /* -------------------------------------------------------------------------- */

@@ -46,11 +46,14 @@ $allTeachers = $school_obj->getAllTeachers();
 
 <div class="container mt-5">
     
-    <div class="d-flex align-items-center mb-4">
-        <a href="admin_dashboard.php" class="btn btn-outline-dark me-3 fw-bold">
+    <div class="d-flex flex-column flex-md-row align-items-center mb-4 gap-3 text-center text-md-start">
+        <a href="admin_dashboard.php" class="btn btn-outline-dark fw-bold">
             <i class="bi bi-arrow-left"></i> Tillbaka till Adminpanelen
         </a>
-        <h1 class="m-0"><i class="bi bi-people-fill"></i> Hantera Klasser</h1>
+        
+        <h1 class="m-0">
+            <i class="bi bi-people-fill d-none d-md-inline me-2"></i>Hantera Klasser
+        </h1>
     </div>
 
     <div class="card shadow-sm mb-5">
@@ -63,11 +66,11 @@ $allTeachers = $school_obj->getAllTeachers();
 
             <form action="" method="POST" class="row g-3 align-items-end">
                 <?= csrfInput() ?>
-                <div class="col-md-5">
+                <div class="col-12 col-md-5">
                     <label for="c_name" class="form-label">Klassnamn</label>
                     <input type="text" name="c_name" id="c_name" class="form-control" placeholder="T.ex. 8A, Grupp Röd..." required>
                 </div>
-                <div class="col-md-4">
+                <div class="col-12 col-md-4">
                     <label for="c_teacher" class="form-label">Ansvarig Lärare</label>
                     <select name="c_teacher" id="c_teacher" class="form-select">
                         <option value="">-- Välj lärare (Valfritt) --</option>
@@ -76,7 +79,7 @@ $allTeachers = $school_obj->getAllTeachers();
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-12 col-md-3">
                     <button type="submit" name="create_class" class="btn btn-primary w-100">Spara Klass</button>
                 </div>
             </form>
@@ -85,7 +88,7 @@ $allTeachers = $school_obj->getAllTeachers();
 
     <div class="card shadow">
         <div class="card-body p-0">
-            <div class="table-responsive">
+            <div class=""> 
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
@@ -99,23 +102,25 @@ $allTeachers = $school_obj->getAllTeachers();
                         <?php if (count($allClasses) > 0): ?>
                             <?php foreach ($allClasses as $class): ?>
                                 <tr>
-                                    <td><strong><?= htmlspecialchars($class['c_name']) ?></strong></td>
-                                    <td>
+                                    <td data-label="Klassnamn"><strong><?= htmlspecialchars($class['c_name']) ?></strong></td>
+                                    
+                                    <td data-label="Lärare">
                                         <?php if ($class['teacher_name']): ?>
                                             <span class="badge bg-info text-dark"><?= htmlspecialchars($class['teacher_name']) ?></span>
                                         <?php else: ?>
                                             <span class="text-muted small">Ingen lärare</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="text-center">
-                                        <span class="badge rounded-pill bg-secondary"><?= $class['student_count'] ?></span>
+                                    
+                                    <td data-label="Antal Elever" class="text-center"> <span class="badge rounded-pill bg-secondary"><?= $class['student_count'] ?></span>
                                     </td>
-                                    <td class="text-end">
+                                    
+                                    <td data-label="Åtgärd" class="text-end">
                                         <a href="edit_class.php?id=<?= $class['c_id'] ?>" class="btn btn-sm btn-primary me-1">
-                                            <i class="bi bi-pencil"></i> Redigera / Elever
+                                            Redigera / Elever
                                         </a>
                                         <a href="admin_classes.php?delete=<?= $class['c_id'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Är du säker? Eleverna i klassen kommer inte raderas, men de blir klasslösa.');">
-                                            <i class="bi bi-trash"></i>
+                                            Ta bort
                                         </a>
                                     </td>
                                 </tr>

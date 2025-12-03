@@ -26,13 +26,19 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute([$userId]);
 $allBadges = $stmt->fetchAll();
 
-// 3. NYTT: Hämta framstegsdata för special-badges
+// 3. Hämta framstegsdata för special-badges
 $specialProgressData = $task_obj->getSpecialBadgeProgress($userId);
 
 ?>
 
 <div class="container mt-4">
     
+    <div class="mb-3">
+        <a href="dashboard.php" class="btn btn-primary btn-sm fw-bold shadow-sm">
+            <i class="bi bi-arrow-left"></i> Tillbaka till Mina Äventyr
+        </a>
+    </div>
+
     <div class="row mb-4">
         <div class="col-12 text-center">
             <h1 style="font-family: 'Cinzel Decorative', serif; color: var(--accent-gold); text-shadow: 2px 2px 4px #000;">
@@ -142,8 +148,8 @@ $specialProgressData = $task_obj->getSpecialBadgeProgress($userId);
 
     <div class="row mt-3 mb-5">
         <div class="col-12 text-center">
-            <a href="dashboard.php" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Tillbaka till Dashboard
+            <a href="dashboard.php" class="btn btn-outline-light">
+                <i class="bi bi-arrow-left"></i> Tillbaka till Mina Äventyr
             </a>
         </div>
     </div>

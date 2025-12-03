@@ -7,7 +7,7 @@ class Task {
         $this->pdo = $pdo;
     }
 
-    // --- HÄMTA GRUNDDATA (Dropdowns etc) ---
+    // --- HÄMTA GRUNDDATA ---
     public function getAllGenres() {
         try {
             $stmt = $this->pdo->query("SELECT * FROM genres ORDER BY g_name ASC");
@@ -33,11 +33,12 @@ class Task {
         } catch (PDOException $e) { return []; }
     }
 
-    // --- CRUD (Skapa, Uppdatera, Ta bort) ---
+    // --- CRUD ---
     public function createTask($name, $typeId, $levelId, $teacherId, $classId, $genreId, $text, $questionsJson, $t_xp) {
         try {
-            $sql = "INSERT INTO tasks (t_name, t_type_fk, t_level_fk, t_teacher_fk, t_class_fk, t_genre_fk, t_text, t_questions, t_xp) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            // ÄNDRAT: Lade till t_created i SQL-frågan
+            $sql = "INSERT INTO tasks (t_name, t_type_fk, t_level_fk, t_teacher_fk, t_class_fk, t_genre_fk, t_text, t_questions, t_xp, t_created) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             $stmt = $this->pdo->prepare($sql);
             if ($stmt->execute([$name, $typeId, $levelId, $teacherId, $classId, $genreId, $text, $questionsJson, $t_xp])) {
                 return ['success' => true];
@@ -68,6 +69,7 @@ class Task {
 
     // --- HÄMTA UPPGIFTER (Listor) ---
     public function getAllTasks() {
+        // Enkel hämtning utan filter (kan användas som fallback)
         try {
             $sql = "SELECT tasks.*, users.u_name AS teacher_name, task_types.tt_name AS type_name, 
                            task_levels.tl_name AS level_name, task_levels.tl_level, 
@@ -78,7 +80,7 @@ class Task {
                     LEFT JOIN task_levels ON tasks.t_level_fk = task_levels.tl_id
                     LEFT JOIN classes ON tasks.t_class_fk = classes.c_id
                     LEFT JOIN genres ON tasks.t_genre_fk = genres.g_id
-                    ORDER BY tasks.t_id DESC";
+                    ORDER BY tasks.t_created DESC"; // Sortera på datum default
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute();
             return $stmt->fetchAll();
@@ -141,9 +143,16 @@ class Task {
         } catch (PDOException $e) { return []; }
     }
 
-    // Admin filter-funktion
-    public function getTasksFiltered($teacherId = null, $typeId = null, $levelId = null, $classId = null, $genreId = null) {
+    // --- ADMIN: HÄMTA UPPGIFTER MED FILTER, SORTERING & PAGINERING ---
+    // UPPDATERAD: Stöd för t_created
+    public function getTasksFiltered($teacherId, $typeId, $levelId, $classId, $genreId, $sortCol, $sortDir, $limit, $offset) {
         try {
+            // Vitlista kolumner för sortering (Säkerhet)
+            // Lade till t_created här!
+            $allowedSorts = ['t_id', 't_name', 'type_name', 'genre_name', 'level_name', 't_xp', 'teacher_name', 't_created'];
+            if (!in_array($sortCol, $allowedSorts)) $sortCol = 't_created'; // Default sortering
+            $sortDir = strtoupper($sortDir) === 'ASC' ? 'ASC' : 'DESC';
+
             $sql = "SELECT tasks.*, users.u_name AS teacher_name, task_types.tt_name AS type_name, 
                            task_levels.tl_name AS level_name, task_levels.tl_level, 
                            classes.c_name AS class_name, genres.g_name AS genre_name
@@ -167,14 +176,39 @@ class Task {
                 $sql .= " WHERE " . implode(" AND ", $whereConditions);
             }
             
-            $sql .= " ORDER BY tasks.t_id DESC";
+            $sql .= " ORDER BY $sortCol $sortDir LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
+            
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
             return $stmt->fetchAll();
         } catch (PDOException $e) { return []; }
     }
 
-    // --- REKOMMENDATIONER (Dashboard) ---
+    // --- ADMIN: RÄKNA ANTAL UPPGIFTER (För Paginering) ---
+    public function getTasksCountFiltered($teacherId, $typeId, $levelId, $classId, $genreId) {
+        try {
+            $sql = "SELECT COUNT(*) FROM tasks";
+            
+            $whereConditions = [];
+            $params = [];
+
+            if ($teacherId !== null) { $whereConditions[] = "t_teacher_fk = ?"; $params[] = $teacherId; }
+            if ($typeId !== null) { $whereConditions[] = "t_type_fk = ?"; $params[] = $typeId; }
+            if ($levelId !== null) { $whereConditions[] = "t_level_fk = ?"; $params[] = $levelId; }
+            if ($classId !== null) { $whereConditions[] = "t_class_fk = ?"; $params[] = $classId; }
+            if ($genreId !== null) { $whereConditions[] = "t_genre_fk = ?"; $params[] = $genreId; }
+
+            if (count($whereConditions) > 0) {
+                $sql .= " WHERE " . implode(" AND ", $whereConditions);
+            }
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchColumn();
+        } catch (PDOException $e) { return 0; }
+    }
+
+    // --- REKOMMENDATIONER (Dashboard) - KVAR SOM FÖRUT ---
     public function getRecentAndNextTasks($studentId, $limit = 8) {
         try {
             $sql = "
@@ -292,8 +326,6 @@ class Task {
     }
 
     // --- GAMIFICATION (BADGES) ---
-
-    // Denna funktion saknades förut - Här är den!
     public function getStudentBadges($studentId) {
         try {
             $sql = "SELECT achievements.*, student_achievements.sa_date_earned 
@@ -309,14 +341,11 @@ class Task {
 
     public function checkAchievements($studentId, $currentXp) {
         $newBadges = [];
-
         try {
-            // 1. Hämta befintliga badges
             $stmt = $this->pdo->prepare("SELECT sa_achievement_fk FROM student_achievements WHERE sa_student_fk = ?");
             $stmt->execute([$studentId]);
             $myBadges = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-            // 2. XP-BADGES (< 90000)
             $stmt = $this->pdo->prepare("SELECT * FROM achievements WHERE a_xp_required <= ? AND a_xp_required < 90000");
             $stmt->execute([$currentXp]);
             $xpBadges = $stmt->fetchAll();
@@ -329,9 +358,6 @@ class Task {
                 }
             }
 
-            // 3. SPECIALBADGES
-            
-            // SPELSÄTT
             $typeMapping = [
                 'Quizmästaren' => 1, 'Ordningsvakten' => 2, 'Pusselbiten' => 3, 
                 'Sanningssägaren' => 4, 'Ordgeniet' => 5
@@ -347,7 +373,6 @@ class Task {
                 }
             }
 
-            // GENRES
             $genreMapping = [
                 'Drakryttaren' => 1, 'Astronauten' => 2, 'Detektiven' => 3, 
                 'Spökjägaren' => 4, 'Professorn' => 5
@@ -363,7 +388,6 @@ class Task {
                 }
             }
 
-            // MÄNGD
             $grindMapping = [
                 'Nyfiken Start' => [1, 5], 'Uppvärmd' => [1, 10], 'På God Väg' => [5, 5],
                 'Erfaren' => [5, 10], 'Eliten' => [10, 5], 'Omöjlig' => [10, 10]
@@ -380,12 +404,10 @@ class Task {
             }
 
             return $newBadges;
-
         } catch (PDOException $e) { return []; }
     }
 
     // --- HJÄLPFUNKTIONER FÖR BADGES ---
-
     private function awardBadge($studentId, $badgeId) {
         $stmt = $this->pdo->prepare("INSERT INTO student_achievements (sa_student_fk, sa_achievement_fk) VALUES (?, ?)");
         $stmt->execute([$studentId, $badgeId]);
