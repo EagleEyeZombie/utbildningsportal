@@ -1005,6 +1005,69 @@ body.theme-rainbow .btn-primary {
 }
 
 /* -------------------------------------------------------------------------- */
+/* FIX: MOBIL-LAYOUT & RESPONSIVITET (Sista touchen)                    */
+/* -------------------------------------------------------------------------- */
+
+/* 1. Förhindra att sidan "zoomar ut" eller scrollar i sidled på mobil */
+html,
+body {
+  overflow-x: hidden;
+  width: 100%;
+  position: relative;
+}
+
+/* 2. Tvinga Header och Footer att alltid ta full bredd */
+.navbar,
+footer {
+  width: 100vw; /* Viewport Width */
+  max-width: 100%;
+  margin: 0;
+  padding-right: 0; /* Säkerställ att ingen padding knuffar ut dem */
+}
+
+/* 3. Extra padding på logotypen (KunskapsÄventyret) enligt önskemål */
+.navbar-brand {
+  padding-left: 15px !important; /* Lite extra luft vänster */
+  padding-right: 15px !important; /* Lite extra luft höger */
+}
+
+/* 4. Justera Hero-boxen på mobil så den inte nuddar kanten */
+@media (max-width: 767px) {
+  .container {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+
+  /* Säkerställ att boxar i index.php inte sticker ut */
+  .row {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  /* Ta bort negativ marginal som kan skapa scroll */
+  .row > * {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+
+/* --- FIX: LOGOTYP PÅ MOBIL (Förhindra att texten klipps) --- */
+@media (max-width: 500px) {
+  /* 1. Dölj ikonen (Boken) helt på mobiler för att spara plats */
+  .navbar-brand i {
+    display: none !important;
+  }
+
+  /* 2. Justera texten så den får plats snyggt på en rad */
+  .navbar-brand {
+    font-size: 1.4rem !important; /* Vi kan ha lite större text nu när ikonen är borta */
+    white-space: nowrap !important; /* Tvinga texten att stanna på EN rad */
+    max-width: 80%; /* Bredden anpassas så den inte krockar med menyn */
+    line-height: 1;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* GLOBAL FIX: LÄSBARHET (Gäller alla teman)                          */
 /* -------------------------------------------------------------------------- */
 
