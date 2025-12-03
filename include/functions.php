@@ -26,6 +26,11 @@ function csrfInput() {
  * Verifierar att CSRF-token är giltig.
  */
 function verifyCsrfToken($token) {
+    // Lägg till en koll: Om token saknas (är null), returnera false direkt.
+    if (empty($token) || !is_string($token)) {
+        return false;
+    }
+
     if (isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token)) {
         return true;
     }

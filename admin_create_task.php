@@ -23,7 +23,12 @@ $successMsg = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
     
-    if (!verifyCsrfToken($_POST['csrf_token'])) { die("Ogiltig CSRF-token."); }
+// Kontrollera om token finns, annars använd tom sträng
+$token = isset($_POST['csrf_token']) ? $_POST['csrf_token'] : '';
+
+if (!verifyCsrfToken($token)) { 
+    die("Ogiltig CSRF-token. (Säkerhetsåtgärd)"); 
+}
 
     $tName = cleanInput($_POST['t_name']);
     $tType = cleanInput($_POST['t_type']);

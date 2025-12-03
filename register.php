@@ -35,9 +35,12 @@ $successMsg = "";
 // 2. Hantera formulär
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register-submit'])) {
     
-    if (!verifyCsrfToken($_POST['csrf_token'])) {
-        die("Ogiltig CSRF-token. Försök ladda om sidan.");
-    }
+    // Kontrollera om token finns, annars använd tom sträng
+$token = isset($_POST['csrf_token']) ? $_POST['csrf_token'] : '';
+
+if (!verifyCsrfToken($token)) { 
+    die("Ogiltig CSRF-token. (Säkerhetsåtgärd)"); 
+}
 
     $uname = cleanInput($_POST['uname']);
     $ufname = cleanInput($_POST['ufname']);
