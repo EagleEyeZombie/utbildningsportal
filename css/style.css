@@ -1158,6 +1158,64 @@ body.admin-mode footer span {
   color: #ffffff !important;
 }
 
+/* --- FIX: PARA IHOP PÅ MOBIL (Rutnät / Grid) --- */
+@media (max-width: 767px) {
+  /* 1. Minimal padding runt hela kortet */
+  .step-card .card-body.p-4 {
+    padding: 0.5rem !important;
+  }
+
+  /* 2. TVINGA FAST HÖJD PÅ RUTORNA */
+  .list-group-item {
+    height: 75px !important; /* Fast höjd för jämnhet */
+    padding: 4px !important;
+    margin-bottom: 4px !important;
+
+    /* Centrera texten */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    overflow: hidden;
+  }
+
+  /* Specialjustering för Vänster-sidan (den med handtaget) */
+  .sortable-item {
+    justify-content: flex-start !important;
+  }
+
+  /* 3. Textstorlek (ÖKAD) */
+  .list-group-item strong,
+  .list-group-item {
+    font-size: 0.95rem !important; /* Mycket större och tydligare text */
+    line-height: 1.1;
+    text-align: center;
+    width: 100%;
+    white-space: normal; /* Tillåt radbrytning för långa ord */
+  }
+
+  /* 4. Handtaget */
+  .handle.fs-4 {
+    font-size: 1.2rem !important;
+    margin-right: 5px !important;
+    min-width: 20px;
+  }
+
+  /* 5. INGET MELLANRUM MELLAN KOLUMNERNA */
+  .row.g-0 {
+    --bs-gutter-x: 0 !important;
+  }
+
+  /* BORTTAGET: Ingen linje, bara lite justering av avstånd */
+  .col-6.pe-1 {
+    border-right: none !important;
+    padding-right: 2px !important; /* Tajtare mellanrum */
+  }
+  .col-6.ps-1 {
+    padding-left: 2px !important;
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* GLOBAL FIX: LÄSBARHET (Gäller alla teman)                          */
 /* -------------------------------------------------------------------------- */
