@@ -23,7 +23,10 @@ if (isset($_GET['signup']) && $_GET['signup'] == 'success') {
 // 2. Hantera formuläret
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
     
-    if (!verifyCsrfToken($_POST['csrf_token'])) {
+    // Kontrollera om token finns, annars använd tom sträng för att undvika felmeddelande
+    $token = isset($_POST['csrf_token']) ? $_POST['csrf_token'] : '';
+    
+    if (!verifyCsrfToken($token)) {
         die("Ogiltig CSRF-token. Försök ladda om sidan.");
     }
 

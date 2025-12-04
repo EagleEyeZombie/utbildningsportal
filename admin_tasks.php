@@ -12,8 +12,12 @@ if ($_SESSION['role_level'] < 5) {
     exit;
 }
 
-// 1. HÄMTA PARAMETRAR
-$filterTeacher = (isset($_GET['teacher']) && $_GET['teacher'] !== 'all') ? (int)$_GET['teacher'] : null;
+// HÄR LÄGGER VI TILL DEN SAKNADE VARIABELN:
+$currentUserId = $_SESSION['user_id'];
+
+// HÄMTA PARAMETRAR FRÅN URL
+// ÄNDRAT: Tog bort (int) för teacher så vi kan ta emot 'missing'
+$filterTeacher = (isset($_GET['teacher']) && $_GET['teacher'] !== 'all') ? $_GET['teacher'] : null;
 $filterType = (isset($_GET['type']) && $_GET['type'] !== 'all') ? (int)$_GET['type'] : null;
 $filterLevel = (isset($_GET['level']) && $_GET['level'] !== 'all') ? (int)$_GET['level'] : null;
 $filterGenre = (isset($_GET['genre']) && $_GET['genre'] !== 'all') ? (int)$_GET['genre'] : null;
@@ -31,6 +35,15 @@ $allTypes = $task_obj->getAllTypes();
 $allLevels = $task_obj->getAllLevels();
 $allGenres = $task_obj->getAllGenres();
 $stmt = $pdo->query("SELECT u_id, u_name FROM users WHERE u_role_fk >= 5 ORDER BY u_name");
+$allTeachers = $stmt->fetchAll();
+
+// Hämta alla lärare (för att kunna byta ägare)
+// FIX: Vi måste joina med roles för att kolla nivån (r_level), inte ID:t
+$stmt = $pdo->query("SELECT users.u_id, users.u_name 
+                     FROM users 
+                     JOIN roles ON users.u_role_fk = roles.r_id 
+                     WHERE roles.r_level >= 5 
+                     ORDER BY users.u_name ASC");
 $allTeachers = $stmt->fetchAll();
 
 $allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLevel, null, $filterGenre, $sortCol, $sortDir, $limit, $offset);
@@ -78,8 +91,8 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $teacher, $typ
             <form action="admin_tasks.php" method="GET" class="row g-3 align-items-end">
                 
                 <div class="col-12 col-md-6 col-lg-3">
-                    <label class="form-label">Skapare</label>
-                    <select name="teacher" class="form-select" onchange="this.form.submit()">
+                    <label for="teacher" class="form-label">Skapare</label>
+                    <select name="teacher" id="teacher" class="form-select" onchange="this.form.submit()">
                         <option value="all">Alla Lärare</option>
                         <option value="<?= $_SESSION['user_id'] ?>" <?php echo ($filterTeacher == $_SESSION['user_id']) ? 'selected' : ''; ?>>Bara Mina</option>
                         <option value="" disabled>---</option>
@@ -92,8 +105,8 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $teacher, $typ
                 </div>
 
                 <div class="col-6 col-md-3 col-lg-2">
-                    <label class="form-label">Typ</label>
-                    <select name="type" class="form-select" onchange="this.form.submit()">
+                    <label for="type" class="form-label">Typ</label>
+                    <select name="type" id="type" class="form-select" onchange="this.form.submit()">
                         <option value="all">Alla</option>
                         <?php foreach ($allTypes as $type): ?>
                             <option value="<?= $type['tt_id'] ?>" <?php echo ($filterType == $type['tt_id']) ? 'selected' : ''; ?>>
@@ -104,8 +117,8 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $teacher, $typ
                 </div>
                 
                 <div class="col-6 col-md-3 col-lg-2">
-                    <label class="form-label">Genre</label>
-                    <select name="genre" class="form-select" onchange="this.form.submit()">
+                    <label for="genre" class="form-label">Genre</label>
+                    <select name="genre" id="genre" class="form-select" onchange="this.form.submit()">
                         <option value="all">Alla</option>
                         <?php foreach ($allGenres as $g): ?>
                             <option value="<?= $g['g_id'] ?>" <?php echo ($filterGenre == $g['g_id']) ? 'selected' : ''; ?>>
@@ -116,8 +129,8 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $teacher, $typ
                 </div>
 
                 <div class="col-6 col-md-3 col-lg-2">
-                    <label class="form-label">Nivå</label>
-                    <select name="level" class="form-select" onchange="this.form.submit()">
+                    <label for="level" class="form-label">Nivå</label>
+                    <select name="level" id="level" class="form-select" onchange="this.form.submit()">
                         <option value="all">Alla</option>
                         <?php foreach ($allLevels as $level): ?>
                             <option value="<?= $level['tl_id'] ?>" <?php echo ($filterLevel == $level['tl_id']) ? 'selected' : ''; ?>>
@@ -128,8 +141,8 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $teacher, $typ
                 </div>
 
                 <div class="col-6 col-md-3 col-lg-2">
-                    <label class="form-label">Visa</label>
-                    <select name="limit" class="form-select" onchange="this.form.submit()">
+                    <label for="limit" class="form-label">Visa</label>
+                    <select name="limit" id="limit" class="form-select" onchange="this.form.submit()">
                         <option value="20" <?= $limit == 20 ? 'selected' : '' ?>>20 / sida</option>
                         <option value="40" <?= $limit == 40 ? 'selected' : '' ?>>40 / sida</option>
                         <option value="80" <?= $limit == 80 ? 'selected' : '' ?>>80 / sida</option>
@@ -186,9 +199,9 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $teacher, $typ
                                     </td>
                                     
                                     <td data-label="Skapare">
-                                        <?= htmlspecialchars($task['teacher_name']) ?>
-                                        <?php if ($task['t_teacher_fk'] == $_SESSION['user_id']): ?>
-                                            <span class="badge bg-success">Du</span>
+                                        <?= htmlspecialchars($task['teacher_name'] ?? 'Raderad lärare') ?>
+                                        <?php if ($task['t_teacher_fk'] == $currentUserId): ?>
+                                        <span class="badge bg-success">Du</span>
                                         <?php endif; ?>
                                     </td>
                                     

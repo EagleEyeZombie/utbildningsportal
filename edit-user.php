@@ -82,8 +82,8 @@ if (isset($_POST['update-submit'])) {
                 <form action="" method="POST">
                     
                     <div class="mb-3">
-                        <label class="form-label">Användarnamn:</label>
-                        <input type="text" class="form-control" value="<?= htmlspecialchars($currentUserInfo['u_name']) ?>" disabled>
+                        <label for="uname_static" class="form-label">Användarnamn:</label>
+                        <input type="text" id="uname_static" class="form-control" value="<?= htmlspecialchars($currentUserInfo['u_name']) ?>" disabled>
                         <div class="form-text">Användarnamn kan inte ändras.</div>
                     </div>
 

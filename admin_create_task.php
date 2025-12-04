@@ -3,13 +3,11 @@ require_once "include/header.php";
 
 // --- SÄKERHETSVAKT ---
 if (!isset($_SESSION['user_id'])) {
-    // Inte inloggad alls -> Gå till Login
     header("Location: login.php");
     exit;
 }
 
 if ($_SESSION['role_level'] < 5) {
-    // Inloggad men fel behörighet (t.ex. Elev försöker nå Admin) -> Gå till 403
     header("Location: 403.php");
     exit;
 }
@@ -23,12 +21,9 @@ $successMsg = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
     
-// Kontrollera om token finns, annars använd tom sträng
-$token = isset($_POST['csrf_token']) ? $_POST['csrf_token'] : '';
-
-if (!verifyCsrfToken($token)) { 
-    die("Ogiltig CSRF-token. (Säkerhetsåtgärd)"); 
-}
+    // Säkrare token-koll
+    $token = isset($_POST['csrf_token']) ? $_POST['csrf_token'] : '';
+    if (!verifyCsrfToken($token)) { die("Ogiltig CSRF-token (Säkerhetsåtgärd)."); }
 
     $tName = cleanInput($_POST['t_name']);
     $tType = cleanInput($_POST['t_type']);
@@ -80,7 +75,6 @@ if (!verifyCsrfToken($token)) {
             }
         }
     }
-    // 5. TEXTLUCKOR (NYTT!)
     elseif (strpos($taskTypeName, 'textluckor') !== false) {
         $gaps = [];
         if (isset($_POST['questions_gaps'])) {
@@ -91,7 +85,6 @@ if (!verifyCsrfToken($token)) {
             }
         }
         
-        // Hantera falska ord (distractors)
         $distractors = [];
         if (!empty($_POST['gap_distractors'])) {
             $rawDistractors = explode(',', $_POST['gap_distractors']);
@@ -117,7 +110,14 @@ if (!verifyCsrfToken($token)) {
 ?>
 
 <div class="container mt-5 mb-5">
-    <h1>Skapa ny uppgift</h1>
+    
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3 text-center text-md-start">
+        <h1 class="m-0 order-1 order-md-1">Skapa ny uppgift</h1>
+        <a href="admin_tasks.php" class="btn btn-outline-dark fw-bold order-2 order-md-2">
+            <i class="bi bi-arrow-left"></i> Tillbaka
+        </a>
+    </div>
+
     <?php if ($errorMsg): ?> <div class="alert alert-danger"><?= $errorMsg ?></div> <?php endif; ?>
     <?php if ($successMsg): ?> <div class="alert alert-success"><?= $successMsg ?></div> <?php endif; ?>
 
@@ -127,15 +127,15 @@ if (!verifyCsrfToken($token)) {
         <div class="row">
             <div class="col-md-8">
                 <div class="card mb-4 shadow-sm">
-                    <div class="card-header bg-primary text-white">Grundinformation</div>
+                    <div class="card-header bg-light text-dark fw-bold border-bottom">Grundinformation</div>
                     <div class="card-body">
                         <div class="mb-3">
-                            <label class="form-label">Uppgiftens Namn</label>
-                            <input type="text" name="t_name" class="form-control" required placeholder="T.ex. Verb och Substantiv">
+                            <label for="t_name" class="form-label">Uppgiftens Namn</label>
+                            <input type="text" name="t_name" id="t_name" class="form-control" required placeholder="T.ex. Verb och Substantiv">
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Typ av uppgift</label>
+                                <label for="taskTypeDropdown" class="form-label">Typ av uppgift</label>
                                 <select name="t_type" id="taskTypeDropdown" class="form-select" required>
                                     <?php foreach ($types as $t): ?>
                                         <option value="<?= $t['tt_id'] ?>"><?= $t['tt_name'] ?></option>
@@ -143,8 +143,8 @@ if (!verifyCsrfToken($token)) {
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Genre (Tema)</label>
-                                <select name="t_genre" class="form-select" required>
+                                <label for="t_genre" class="form-label">Genre (Tema)</label>
+                                <select name="t_genre" id="t_genre" class="form-select" required>
                                     <?php foreach ($allGenres as $g): ?>
                                         <option value="<?= $g['g_id'] ?>"><?= $g['g_name'] ?></option>
                                     <?php endforeach; ?>
@@ -153,16 +153,16 @@ if (!verifyCsrfToken($token)) {
                         </div>
                         <div class="row">
                             <div class="col-md-4 mb-3">
-                                <label class="form-label">Svårighetsgrad</label>
-                                <select name="t_level" class="form-select" required>
+                                <label for="t_level" class="form-label">Svårighetsgrad</label>
+                                <select name="t_level" id="t_level" class="form-select" required>
                                     <?php foreach ($levels as $l): ?>
                                         <option value="<?= $l['tl_id'] ?>"><?= $l['tl_name'] ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label class="form-label">Klass (Valfri)</label>
-                                <select name="t_class" class="form-select">
+                                <label for="t_class" class="form-label">Klass (Valfri)</label>
+                                <select name="t_class" id="t_class" class="form-select">
                                     <option value="">Ingen specifik klass</option>
                                     <?php foreach ($allClasses as $class): ?>
                                         <option value="<?= $class['c_id'] ?>"><?= htmlspecialchars($class['c_name']) ?></option>
@@ -170,77 +170,74 @@ if (!verifyCsrfToken($token)) {
                                 </select>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label class="form-label">Poäng (XP)</label>
-                                <input type="number" name="t_xp" class="form-control" value="10" required>
+                                <label for="t_xp" class="form-label">Poäng (XP)</label>
+                                <input type="number" name="t_xp" id="t_xp" class="form-control" value="10" required>
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Instruktioner / Text</label>
-                            <textarea name="t_text" class="form-control" rows="3" placeholder="Förklaring till eleven..."></textarea>
+                            <label for="t_text" class="form-label">Instruktioner / Text</label>
+                            <textarea name="t_text" id="t_text" class="form-control" rows="3" placeholder="Förklaring till eleven..."></textarea>
                         </div>
                     </div>
                 </div>
 
-                <!-- FORM: FLERVAL -->
                 <div class="card shadow-sm task-form-section" id="form-flerval">
-                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <div class="card-header bg-light text-dark fw-bold d-flex justify-content-between align-items-center border-bottom">
                         <span>Frågor (Flerval)</span>
-                        <button type="button" class="btn btn-sm btn-light" onclick="addQuestionField()">+ Lägg till fråga</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark" onclick="addQuestionField()">+ Lägg till fråga</button>
                     </div>
                     <div class="card-body" id="questions-container"></div>
                 </div>
 
-                <!-- FORM: SANT/FALSKT -->
                 <div class="card shadow-sm task-form-section d-none" id="form-sant-falskt">
-                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <div class="card-header bg-light text-dark fw-bold d-flex justify-content-between align-items-center border-bottom">
                         <span>Frågor (Sant/Falskt)</span>
-                        <button type="button" class="btn btn-sm btn-light" onclick="addTrueFalseField()">+ Lägg till påstående</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark" onclick="addTrueFalseField()">+ Lägg till påstående</button>
                     </div>
                     <div class="card-body" id="tf-questions-container"></div>
                 </div>
 
-                <!-- FORM: SORTERING -->
                 <div class="card shadow-sm task-form-section d-none" id="form-sortering">
-                    <div class="card-header bg-secondary text-white"><span>Frågor (Sortering)</span></div>
+                    <div class="card-header bg-light text-dark fw-bold border-bottom"><span>Frågor (Sortering)</span></div>
                     <div class="card-body" id="sorting-questions-container">
                         <div class="alert alert-info">Skriv meningarna i **rätt ordning**, en mening per rad.</div>
                         <div class="mb-2">
-                            <label class="form-label fw-bold">Sorterbara meningar</label>
-                            <textarea name="questions_sort[0][sentences]" class="form-control" rows="8"></textarea>
+                            <label for="sort_sentences" class="form-label fw-bold">Sorterbara meningar</label>
+                            <textarea name="questions_sort[0][sentences]" id="sort_sentences" class="form-control" rows="8"></textarea>
                         </div>
                     </div>
                 </div>
 
-                <!-- FORM: PARA IHOP -->
                 <div class="card shadow-sm task-form-section d-none" id="form-paraihop">
-                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <div class="card-header bg-light text-dark fw-bold d-flex justify-content-between align-items-center border-bottom">
                         <span>Para ihop (Term och Betydelse)</span>
-                        <button type="button" class="btn btn-sm btn-light" onclick="addPairField()">+ Lägg till par</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark" onclick="addPairField()">+ Lägg till par</button>
                     </div>
                     <div class="card-body" id="pair-questions-container"></div>
                 </div>
 
-                <!-- FORM: TEXTLUCKOR (NYTT!) -->
                 <div class="card shadow-sm task-form-section d-none" id="form-textluckor">
-                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <div class="card-header bg-light text-dark fw-bold d-flex justify-content-between align-items-center border-bottom">
                         <span>Textluckor</span>
-                        <button type="button" class="btn btn-sm btn-light" onclick="addGapField()">+ Lägg till mening</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark" onclick="addGapField()">+ Lägg till mening</button>
                     </div>
                     <div class="card-body">
                         <div class="alert alert-info">Skriv meningen och använd <strong>___</strong> där luckan ska vara. Skriv det rätta ordet i rutan bredvid.</div>
                         <div id="gaps-container"></div>
                         
                         <div class="mt-4">
-                            <label class="form-label fw-bold">Falska ord (Distractors)</label>
-                            <input type="text" name="gap_distractors" class="form-control" placeholder="Separera med komma (t.ex. röd, blå, grön)">
+                            <label for="gap_distractors" class="form-label fw-bold">Falska ord (Distractors)</label>
+                            <input type="text" name="gap_distractors" id="gap_distractors" class="form-control" placeholder="Separera med komma (t.ex. röd, blå, grön)">
                             <div class="form-text">Dessa ord kommer också finnas med i listan för att göra det svårare.</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="d-grid mt-4">
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                    <a href="admin_tasks.php" class="btn btn-secondary btn-lg me-md-2">Avbryt</a>
                     <button type="submit" name="create-task" class="btn btn-success btn-lg">Spara Uppgift</button>
                 </div>
+
             </div>
             
              <div class="col-md-4">
@@ -259,15 +256,27 @@ if (!verifyCsrfToken($token)) {
     function addQuestionField() {
         questionCount++;
         const container = document.getElementById('questions-container');
+        // FIX: Unika ID:n och labels
         const html = `
         <div class="border p-3 mb-3 rounded bg-light position-relative" id="q-row-${questionCount}">
             <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()"></button>
-            <div class="mb-2"><label class="form-label fw-bold">Fråga ${questionCount}</label><input type="text" name="questions_mc[${questionCount}][question]" class="form-control" required placeholder="Fråga"></div>
+            <div class="mb-2">
+                <label for="q_mc_${questionCount}" class="form-label fw-bold">Fråga ${questionCount}</label>
+                <input type="text" id="q_mc_${questionCount}" name="questions_mc[${questionCount}][question]" class="form-control" required placeholder="Fråga">
+            </div>
             <div class="row g-2">
-                <div class="col-md-6"><input type="text" name="questions_mc[${questionCount}][correct]" class="form-control border-success" required placeholder="Rätt svar"></div>
-                <div class="col-md-6"><input type="text" name="questions_mc[${questionCount}][wrong1]" class="form-control border-danger" required placeholder="Fel svar 1"></div>
-                <div class="col-md-6"><input type="text" name="questions_mc[${questionCount}][wrong2]" class="form-control border-danger" placeholder="Fel svar 2"></div>
-                <div class="col-md-6"><input type="text" name="questions_mc[${questionCount}][wrong3]" class="form-control border-danger" placeholder="Fel svar 3"></div>
+                <div class="col-md-6">
+                    <input type="text" name="questions_mc[${questionCount}][correct]" class="form-control border-success" required placeholder="Rätt svar" aria-label="Rätt svar">
+                </div>
+                <div class="col-md-6">
+                    <input type="text" name="questions_mc[${questionCount}][wrong1]" class="form-control border-danger" required placeholder="Fel svar 1" aria-label="Fel svar 1">
+                </div>
+                <div class="col-md-6">
+                    <input type="text" name="questions_mc[${questionCount}][wrong2]" class="form-control border-danger" placeholder="Fel svar 2" aria-label="Fel svar 2">
+                </div>
+                <div class="col-md-6">
+                    <input type="text" name="questions_mc[${questionCount}][wrong3]" class="form-control border-danger" placeholder="Fel svar 3" aria-label="Fel svar 3">
+                </div>
             </div>
         </div>`;
         container.insertAdjacentHTML('beforeend', html);
@@ -278,11 +287,21 @@ if (!verifyCsrfToken($token)) {
     function addTrueFalseField() {
         tfQuestionCount++;
         const container = document.getElementById('tf-questions-container');
+        // FIX: Unika ID:n och labels
         const html = `
         <div class="border p-3 mb-3 rounded bg-light position-relative" id="tf-q-row-${tfQuestionCount}">
             <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()"></button>
-            <div class="mb-2"><label class="form-label fw-bold">Påstående ${tfQuestionCount}</label><input type="text" name="questions_tf[${tfQuestionCount}][question]" class="form-control" required placeholder="Påstående"></div>
-            <div class="mb-2"><label class="form-label">Rätt svar</label><select name="questions_tf[${tfQuestionCount}][correct]" class="form-select"><option value="Sant">Sant</option><option value="Falskt">Falskt</option></select></div>
+            <div class="mb-2">
+                <label for="q_tf_${tfQuestionCount}" class="form-label fw-bold">Påstående ${tfQuestionCount}</label>
+                <input type="text" id="q_tf_${tfQuestionCount}" name="questions_tf[${tfQuestionCount}][question]" class="form-control" required placeholder="Påstående">
+            </div>
+            <div class="mb-2">
+                <label for="a_tf_${tfQuestionCount}" class="form-label">Rätt svar</label>
+                <select id="a_tf_${tfQuestionCount}" name="questions_tf[${tfQuestionCount}][correct]" class="form-select">
+                    <option value="Sant">Sant</option>
+                    <option value="Falskt">Falskt</option>
+                </select>
+            </div>
         </div>`;
         container.insertAdjacentHTML('beforeend', html);
     }
@@ -292,33 +311,41 @@ if (!verifyCsrfToken($token)) {
     function addPairField() {
         pairCount++;
         const container = document.getElementById('pair-questions-container');
+        // FIX: Unika ID:n och labels
         const html = `
         <div class="border p-3 mb-3 rounded bg-light position-relative" id="pair-row-${pairCount}">
             <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()"></button>
             <div class="row">
-                <div class="col-md-6"><label class="form-label fw-bold">Term</label><input type="text" name="questions_pair[${pairCount}][term]" class="form-control" required placeholder="T.ex. Sköldpadda"></div>
-                <div class="col-md-6"><label class="form-label fw-bold">Betydelse</label><input type="text" name="questions_pair[${pairCount}][def]" class="form-control" required placeholder="T.ex. Djur"></div>
+                <div class="col-md-6">
+                    <label for="pair_term_${pairCount}" class="form-label fw-bold">Term</label>
+                    <input type="text" id="pair_term_${pairCount}" name="questions_pair[${pairCount}][term]" class="form-control" required placeholder="T.ex. Sköldpadda">
+                </div>
+                <div class="col-md-6">
+                    <label for="pair_def_${pairCount}" class="form-label fw-bold">Betydelse</label>
+                    <input type="text" id="pair_def_${pairCount}" name="questions_pair[${pairCount}][def]" class="form-control" required placeholder="T.ex. Djur">
+                </div>
             </div>
         </div>`;
         container.insertAdjacentHTML('beforeend', html);
     }
 
-    // --- TEXTLUCKOR (NYTT!) ---
+    // --- TEXTLUCKOR ---
     let gapCount = 0;
     function addGapField() {
         gapCount++;
         const container = document.getElementById('gaps-container');
+        // FIX: Unika ID:n och labels
         const html = `
         <div class="border p-3 mb-3 rounded bg-light position-relative" id="gap-row-${gapCount}">
             <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()"></button>
             <div class="row">
                 <div class="col-md-8">
-                    <label class="form-label fw-bold">Mening med lucka</label>
-                    <input type="text" name="questions_gaps[${gapCount}][sentence]" class="form-control" required placeholder="T.ex. Katten sitter på ___">
+                    <label for="gap_sent_${gapCount}" class="form-label fw-bold">Mening med lucka</label>
+                    <input type="text" id="gap_sent_${gapCount}" name="questions_gaps[${gapCount}][sentence]" class="form-control" required placeholder="T.ex. Katten sitter på ___">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label fw-bold">Rätt ord (Luckan)</label>
-                    <input type="text" name="questions_gaps[${gapCount}][word]" class="form-control border-success" required placeholder="T.ex. mattan">
+                    <label for="gap_word_${gapCount}" class="form-label fw-bold">Rätt ord (Luckan)</label>
+                    <input type="text" id="gap_word_${gapCount}" name="questions_gaps[${gapCount}][word]" class="form-control border-success" required placeholder="T.ex. mattan">
                 </div>
             </div>
         </div>`;
@@ -343,7 +370,7 @@ if (!verifyCsrfToken($token)) {
         else if (selectedText.includes('sant/falskt')) { activeFormId = 'form-sant-falskt'; } 
         else if (selectedText.includes('sortering')) { activeFormId = 'form-sortering'; }
         else if (selectedText.includes('para ihop')) { activeFormId = 'form-paraihop'; }
-        else if (selectedText.includes('textluckor')) { activeFormId = 'form-textluckor'; } // <-- NYTT
+        else if (selectedText.includes('textluckor')) { activeFormId = 'form-textluckor'; }
 
         if (activeFormId) {
             const activeForm = document.getElementById(activeFormId);
@@ -366,23 +393,19 @@ if (!verifyCsrfToken($token)) {
         if (selectedText.includes('flerval')) { addQuestionField(); } 
         else if (selectedText.includes('sant/falskt')) { addTrueFalseField(); }
         else if (selectedText.includes('para ihop')) { addPairField(); }
-        else if (selectedText.includes('textluckor')) { addGapField(); } // <-- NYTT
+        else if (selectedText.includes('textluckor')) { addGapField(); }
     }
     
     window.onload = initForms;
 
-    // 1. Fånga 'invalid'-eventet för ALLA fält (även dynamiska)
-    // 'true' på slutet betyder att vi fångar det i "capture phase", vilket krävs för invalid-event
+    // --- VALIDERING (SVENSKA FELMEDDELANDEN) ---
     document.addEventListener('invalid', function(e) {
         const target = e.target;
-        
-        // Om felet är att fältet är tomt (valueMissing)
         if (target.validity.valueMissing) {
             target.setCustomValidity('Detta fält måste fyllas i.');
         }
     }, true);
 
-    // 2. Rensa felmeddelandet direkt när man börjar skriva
     document.addEventListener('input', function(e) {
         e.target.setCustomValidity('');
     });

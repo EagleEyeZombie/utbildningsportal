@@ -35,12 +35,12 @@ $successMsg = "";
 // 2. Hantera formulär
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register-submit'])) {
     
-    // Kontrollera om token finns, annars använd tom sträng
-$token = isset($_POST['csrf_token']) ? $_POST['csrf_token'] : '';
-
-if (!verifyCsrfToken($token)) { 
-    die("Ogiltig CSRF-token. (Säkerhetsåtgärd)"); 
-}
+// Kontrollera om token finns, annars använd tom sträng för att undvika felmeddelande
+    $token = isset($_POST['csrf_token']) ? $_POST['csrf_token'] : '';
+    
+    if (!verifyCsrfToken($token)) {
+        die("Ogiltig CSRF-token. Försök ladda om sidan.");
+    }
 
     $uname = cleanInput($_POST['uname']);
     $ufname = cleanInput($_POST['ufname']);
@@ -167,7 +167,7 @@ $recentUsers = $user_obj->getRecentUsers(20);
                         </div>
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="user-management.php" class="btn btn-outline-dark fw-bold me-2">Till Användarlistan</a>
+                            <a href="user-management.php" class="btn btn-outline-dark fw-bold me-2">Tillbaka till Användarlistan</a>
                             <button type="submit" name="register-submit" class="btn btn-success px-4">Skapa Användare</button>
                         </div>
                     </form>

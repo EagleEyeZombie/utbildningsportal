@@ -4,10 +4,16 @@
  * Rensar data från skadlig kod (XSS-skydd).
  * Används på all indata från formulär.
  */
+/**
+ * Rensar data från skadlig kod (XSS-skydd).
+ */
 function cleanInput($data) {
-    $data = trim($data);            // Ta bort onödig whitespace
-    $data = stripslashes($data);    // Ta bort backslashes
-    $data = htmlspecialchars($data, ENT_QUOTES, 'UTF-8'); // Omvandla specialtecken till HTML-entiteter
+    if ($data === null) {
+        return ''; // Returnera tom sträng om data saknas
+    }
+    $data = trim($data);
+    $data = stripslashes($data);
+    $data = htmlspecialchars($data, ENT_QUOTES, 'UTF-8');
     return $data;
 }
 

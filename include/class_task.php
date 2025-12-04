@@ -47,16 +47,18 @@ class Task {
         } catch (PDOException $e) { return ['success' => false, 'error' => $e->getMessage()]; }
     }
 
-    public function updateTask($taskId, $name, $typeId, $levelId, $classId, $genreId, $text, $questionsJson, $t_xp) {
-        try {
-            $sql = "UPDATE tasks SET t_name=?, t_type_fk=?, t_level_fk=?, t_class_fk=?, t_genre_fk=?, t_text=?, t_questions=?, t_xp=? WHERE t_id=?";
-            $stmt = $this->pdo->prepare($sql);
-            if ($stmt->execute([$name, $typeId, $levelId, $classId, $genreId, $text, $questionsJson, $t_xp, $taskId])) {
-                return ['success' => true];
-            }
-            return ['success' => false, 'error' => 'Kunde inte uppdatera uppgiften.'];
-        } catch (PDOException $e) { return ['success' => false, 'error' => $e->getMessage()]; }
-    }
+    public function updateTask($taskId, $name, $typeId, $levelId, $classId, $genreId, $text, $questionsJson, $t_xp, $teacherId) { // <--- $teacherId tillagd
+    try {
+        // Lade till t_teacher_fk=? i SQL
+        $sql = "UPDATE tasks SET t_name=?, t_type_fk=?, t_level_fk=?, t_class_fk=?, t_genre_fk=?, t_text=?, t_questions=?, t_xp=?, t_teacher_fk=? WHERE t_id=?";
+        $stmt = $this->pdo->prepare($sql);
+        // Lade till $teacherId i execute-arrayen (näst sist)
+        if ($stmt->execute([$name, $typeId, $levelId, $classId, $genreId, $text, $questionsJson, $t_xp, $teacherId, $taskId])) {
+            return ['success' => true];
+        }
+        return ['success' => false, 'error' => 'Kunde inte uppdatera uppgiften.'];
+    } catch (PDOException $e) { return ['success' => false, 'error' => $e->getMessage()]; }
+}
 
     public function deleteTask($taskId) {
         try {
@@ -144,13 +146,11 @@ class Task {
     }
 
     // --- ADMIN: HÄMTA UPPGIFTER MED FILTER, SORTERING & PAGINERING ---
-    // UPPDATERAD: Stöd för t_created
+    // UPPDATERAD: Hanterar nu 'missing' för lärare (raderade användare)
     public function getTasksFiltered($teacherId, $typeId, $levelId, $classId, $genreId, $sortCol, $sortDir, $limit, $offset) {
         try {
-            // Vitlista kolumner för sortering (Säkerhet)
-            // Lade till t_created här!
             $allowedSorts = ['t_id', 't_name', 'type_name', 'genre_name', 'level_name', 't_xp', 'teacher_name', 't_created'];
-            if (!in_array($sortCol, $allowedSorts)) $sortCol = 't_created'; // Default sortering
+            if (!in_array($sortCol, $allowedSorts)) $sortCol = 't_created'; 
             $sortDir = strtoupper($sortDir) === 'ASC' ? 'ASC' : 'DESC';
 
             $sql = "SELECT tasks.*, users.u_name AS teacher_name, task_types.tt_name AS type_name, 
@@ -166,7 +166,18 @@ class Task {
             $whereConditions = [];
             $params = [];
 
-            if ($teacherId !== null) { $whereConditions[] = "tasks.t_teacher_fk = ?"; $params[] = $teacherId; }
+            // NY LOGIK HÄR:
+            if ($teacherId !== null) { 
+                if ($teacherId === 'missing') {
+                    // Hämta uppgifter där lärare är NULL (raderad)
+                    $whereConditions[] = "tasks.t_teacher_fk IS NULL";
+                } else {
+                    // Hämta specifik lärare
+                    $whereConditions[] = "tasks.t_teacher_fk = ?"; 
+                    $params[] = $teacherId; 
+                }
+            }
+            
             if ($typeId !== null) { $whereConditions[] = "tasks.t_type_fk = ?"; $params[] = $typeId; }
             if ($levelId !== null) { $whereConditions[] = "tasks.t_level_fk = ?"; $params[] = $levelId; }
             if ($classId !== null) { $whereConditions[] = "tasks.t_class_fk = ?"; $params[] = $classId; }
@@ -183,16 +194,24 @@ class Task {
             return $stmt->fetchAll();
         } catch (PDOException $e) { return []; }
     }
-
-    // --- ADMIN: RÄKNA ANTAL UPPGIFTER (För Paginering) ---
+    
+    // --- ADMIN: RÄKNA ANTAL (Måste också uppdateras för paginering!) ---
     public function getTasksCountFiltered($teacherId, $typeId, $levelId, $classId, $genreId) {
         try {
             $sql = "SELECT COUNT(*) FROM tasks";
-            
             $whereConditions = [];
             $params = [];
 
-            if ($teacherId !== null) { $whereConditions[] = "t_teacher_fk = ?"; $params[] = $teacherId; }
+            // SAMMA LOGIK HÄR:
+            if ($teacherId !== null) { 
+                if ($teacherId === 'missing') {
+                    $whereConditions[] = "t_teacher_fk IS NULL";
+                } else {
+                    $whereConditions[] = "t_teacher_fk = ?"; 
+                    $params[] = $teacherId; 
+                }
+            }
+            
             if ($typeId !== null) { $whereConditions[] = "t_type_fk = ?"; $params[] = $typeId; }
             if ($levelId !== null) { $whereConditions[] = "t_level_fk = ?"; $params[] = $levelId; }
             if ($classId !== null) { $whereConditions[] = "t_class_fk = ?"; $params[] = $classId; }

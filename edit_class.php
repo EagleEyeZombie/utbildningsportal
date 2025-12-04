@@ -2,17 +2,11 @@
 require_once "include/header.php";
 
 // --- SÄKERHETSVAKT ---
-if (!isset($_SESSION['user_id'])) {
-    // Inte inloggad alls -> Gå till Login
+if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
     header("Location: login.php");
     exit;
 }
 
-if ($_SESSION['role_level'] < 5) {
-    // Inloggad men fel behörighet (t.ex. Elev försöker nå Admin) -> Gå till 403
-    header("Location: 403.php");
-    exit;
-}
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     header("Location: admin_classes.php");
     exit;
@@ -82,12 +76,12 @@ $allTeachers = $school_obj->getAllTeachers();
                     <form action="" method="POST">
                         <?= csrfInput() ?>
                         <div class="mb-3">
-                            <label class="form-label">Namn <small class="text-muted">(T.ex. 8A, Grupp Röd)</small></label>
-                            <input type="text" name="c_name" class="form-control" value="<?= htmlspecialchars($class['c_name']) ?>" required>
+                            <label for="c_name" class="form-label">Namn <small class="text-muted">(T.ex. 8A, Grupp Röd)</small></label>
+                            <input type="text" id="c_name" name="c_name" class="form-control" value="<?= htmlspecialchars($class['c_name']) ?>" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Lärare</label>
-                            <select name="c_teacher" class="form-select">
+                            <label for="c_teacher" class="form-label">Lärare</label>
+                            <select id="c_teacher" name="c_teacher" class="form-select">
                                 <option value="">-- Ingen --</option>
                                 <?php foreach ($allTeachers as $t): ?>
                                     <option value="<?= $t['u_id'] ?>" <?= ($t['u_id'] == $class['c_teacher_fk']) ? 'selected' : '' ?>>
@@ -107,8 +101,8 @@ $allTeachers = $school_obj->getAllTeachers();
                     <form action="" method="POST">
                         <?= csrfInput() ?>
                         <div class="mb-3">
-                            <label class="form-label">Välj elev (utan klass)</label>
-                            <select name="student_id" class="form-select" required>
+                            <label for="student_id" class="form-label">Välj elev (utan klass)</label>
+                            <select id="student_id" name="student_id" class="form-select" required>
                                 <option value="" disabled selected>-- Välj elev --</option>
                                 <?php foreach ($availableStudents as $s): ?>
                                     <option value="<?= $s['u_id'] ?>">
