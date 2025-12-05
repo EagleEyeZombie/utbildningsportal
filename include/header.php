@@ -15,8 +15,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['set_theme']) && isset
     }
 }
 
-// --- LOGIK FÖR TEMA ---
+// --- LOGIK FÖR SIDTITEL (NYTT) ---
 $current_page = basename($_SERVER['PHP_SELF']);
+$site_name = "KunskapsÄventyret";
+$page_title = "Välkommen"; // Standard
+
+switch ($current_page) {
+    case 'index.php': $page_title = "Start"; break;
+    case 'login.php': $page_title = "Logga in"; break;
+    case 'dashboard.php': $page_title = "Mina Äventyr"; break;
+    case 'task_view.php': $page_title = "Uppdrag"; break;
+    case 'task_submit.php': $page_title = "Resultat"; break;
+    case 'badges.php': $page_title = "Utmärkelser"; break;
+    
+    // Admin
+    case 'admin_dashboard.php': $page_title = "Adminpanel"; break;
+    case 'user-management.php': $page_title = "Hantera Användare"; break;
+    case 'admin_tasks.php': $page_title = "Hantera Uppgifter"; break;
+    case 'admin_create_task.php': $page_title = "Skapa Uppgift"; break;
+    case 'admin_edit_task.php': $page_title = "Redigera Uppgift"; break;
+    case 'admin_classes.php': $page_title = "Hantera Klasser"; break;
+    case 'edit_class.php': $page_title = "Redigera Klass"; break;
+    case 'register.php': $page_title = "Lägg till Användare"; break;
+    case '403.php': $page_title = "Åtkomst Nekad"; break;
+}
+
+// --- LOGIK FÖR TEMA (BAKGRUND & DESIGN) ---
 $game_pages = ['dashboard.php', 'task_view.php', 'badges.php']; 
 
 $body_class = 'student-page-background'; 
@@ -24,9 +48,8 @@ if (isset($_SESSION['role_level']) && $_SESSION['role_level'] >= 5 && !in_array(
     $body_class = 'admin-mode';
 }
 
-// Hämta tema (Standard är nu 'fantasy')
+// Hämta tema
 $userTheme = 'fantasy'; 
-
 if (isset($_SESSION['user_id'])) {
     try {
         if (isset($_SESSION['user_theme'])) {
@@ -50,7 +73,8 @@ $themeClass = 'theme-' . $userTheme;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Utbildningsportal</title>
+    
+    <title><?= $page_title ?> | <?= $site_name ?></title>
     
     <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Orbitron:wght@400;700&family=Pacifico&family=Lobster&family=Press+Start+2P&family=Merriweather:wght@400;700&family=Montserrat:wght@400;700&family=Chewy&display=swap" rel="stylesheet">
     
@@ -64,7 +88,7 @@ $themeClass = 'theme-' . $userTheme;
     <script src="js/script.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     
-    <link rel="icon" href="data:,">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 </head>
 <body class="<?php echo $body_class . ' ' . $themeClass; ?>">
 
@@ -135,6 +159,7 @@ $themeClass = 'theme-' . $userTheme;
                             </button>
                         </form>
                     </li>
+
                     <li>
                         <form method="POST" class="d-block w-100">
                             <?= csrfInput() ?>
