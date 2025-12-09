@@ -23,20 +23,24 @@ class User {
                 return ['success' => false, 'error' => 'Användarnamnet måste vara mellan 3 och 20 tecken långt.'];
             }
 
-            if ($condition === "create") {
-                $stmt = $this->pdo->prepare("SELECT u_id FROM users WHERE LOWER(u_name) = LOWER(?)");
-                $stmt->execute([strtolower($uname)]);
-                if ($stmt->rowCount() > 0) {
+            // Kontrollera användarnamn (unikt)
+            $stmt = $this->pdo->prepare("SELECT u_id FROM users WHERE LOWER(u_name) = LOWER(?)");
+            $stmt->execute([strtolower($uname)]);
+            
+            if ($stmt->rowCount() > 0) {
+                $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
+                // Om skapa NY eller om REDIGERA och ID inte matchar mitt eget
+                if ($condition === "create" || ($currentUserId !== null && $existingUser['u_id'] != $currentUserId)) {
                     return ['success' => false, 'error' => 'Användarnamnet är redan upptaget.'];
                 }
             }
 
+            // Kontrollera e-post (unikt)
             $stmt = $this->pdo->prepare("SELECT u_id FROM users WHERE LOWER(u_email) = LOWER(?)");
             $stmt->execute([strtolower($umail)]);
             
             if ($stmt->rowCount() > 0) {
                 $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
-                
                 if ($condition === "create" || ($currentUserId !== null && $existingUser['u_id'] != $currentUserId)) {
                     return ['success' => false, 'error' => 'E-postadressen används redan.'];
                 }
@@ -90,15 +94,19 @@ class User {
     }
     
     /**
-     * Uppdaterar en befintlig användare.
+     * Uppdaterar en befintlig användare (Inklusive Klass och Användarnamn).
      */
-    public function editUser($userId, $uname, $ufname, $ulname, $umail, $upass, $urole, $progressSpeed) {
+    public function editUser($userId, $uname, $ufname, $ulname, $umail, $upass, $urole, $progressSpeed, $classId = null) {
         try {
             $this->pdo->beginTransaction();
 
-            $query = "UPDATE users SET u_fname = ?, u_lname = ?, u_email = ?, u_role_fk = ?, u_progress_speed_fk = ?";
-            $params = [$ufname, $ulname, $umail, $urole, $progressSpeed];
+            if (empty($classId)) $classId = null;
 
+            // Grundfråga: Uppdatera allt inklusive u_name och u_class_fk
+            $query = "UPDATE users SET u_name = ?, u_fname = ?, u_lname = ?, u_email = ?, u_role_fk = ?, u_progress_speed_fk = ?, u_class_fk = ?";
+            $params = [$uname, $ufname, $ulname, $umail, $urole, $progressSpeed, $classId];
+
+            // Om lösenord ska uppdateras, lägg till det i frågan
             if (!empty($upass)) {
                 $hashedPassword = password_hash($upass, PASSWORD_DEFAULT);
                 $query .= ", u_password = ?";
@@ -119,9 +127,6 @@ class User {
         }
     }
     
-    /**
-     * Hämtar information om en specifik användare.
-     */
     public function selectUserInfo($userId) {
         try {
             $stmt = $this->pdo->prepare("SELECT * FROM users WHERE u_id = ?");
@@ -130,7 +135,7 @@ class User {
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($user) {
-                // Fallback för gamla användare
+                // Fallback för gamla användare som saknar speed
                 if (!isset($user['u_progress_speed_fk']) || empty($user['u_progress_speed_fk'])) {
                     $user['u_progress_speed_fk'] = 1;
                 }
@@ -143,9 +148,6 @@ class User {
         }
     }
 
-    /**
-     * Loggar in användaren.
-     */
     public function loginUser($input, $password) {
         try {
             $stmt = $this->pdo->prepare("
@@ -167,7 +169,6 @@ class User {
                 $_SESSION['role_level'] = $user['r_level'];
                 $_SESSION['user_xp'] = $user['u_xp'];
                 $_SESSION['user_level'] = $user['u_level'];
-                // Ladda in temat vid inloggning också
                 $_SESSION['user_theme'] = $user['u_theme'] ?? 'default';
                 
                 $updateStmt = $this->pdo->prepare("UPDATE users SET u_lastlogin = NOW() WHERE u_id = ?");
@@ -183,9 +184,7 @@ class User {
         }
     }
     
-    /**
-     * Enkel sökning
-     */
+    // Enkel sökning (används kanske på andra ställen)
     public function searchUsers($userName){
         try {
             $stmt = $this->pdo->prepare("
@@ -207,18 +206,21 @@ class User {
         }
     }
 
-    // --- AVANCERAD HÄMTNING MED FILTER ---
-
+    /**
+     * Hämtar användare med Sök, Filter, Sortering och Paginering.
+     * UPPDATERAD: Hämtar nu även KLASSNAMN (c_name).
+     */
     public function getUsersFiltered($search, $roleId, $sortCol, $sortDir, $limit, $offset) {
         try {
-            $allowedSorts = ['u_name', 'u_fname', 'u_lname', 'u_email', 'r_name', 'u_created'];
+            $allowedSorts = ['u_name', 'u_fname', 'u_lname', 'u_email', 'r_name', 'u_created', 'c_name'];
             if (!in_array($sortCol, $allowedSorts)) $sortCol = 'u_name';
             $sortDir = strtoupper($sortDir) === 'DESC' ? 'DESC' : 'ASC';
 
-            $sql = "SELECT users.*, roles.r_name, progress_speeds.ps_name 
+            $sql = "SELECT users.*, roles.r_name, progress_speeds.ps_name, classes.c_name 
                     FROM users 
                     LEFT JOIN roles ON users.u_role_fk = roles.r_id 
                     LEFT JOIN progress_speeds ON users.u_progress_speed_fk = progress_speeds.ps_id
+                    LEFT JOIN classes ON users.u_class_fk = classes.c_id
                     WHERE 1=1";
             
             $params = [];
@@ -273,7 +275,8 @@ class User {
     public function getTotalUsers() {
         return $this->getUsersCountFiltered('', 'all');
     }
-
+    
+    // För startsidan (Register-sidan)
     public function getRecentUsers($limit = 20) {
         try {
             $sql = "SELECT u_name, u_fname, u_lname, u_email, r_name, u_created 
@@ -289,7 +292,6 @@ class User {
     }
 
     // --- LEVEL & XP SYSTEM ---
-
     public function addXpAndCheckLevelup($userId, $baseXpAmount) {
         try {
             $sql = "SELECT u.u_xp, u.u_level, ps.ps_multiplier 
@@ -351,7 +353,6 @@ class User {
     // --- TEMAHANTERING ---
     public function updateUserTheme($userId, $themeName) {
         try {
-            // ÄNDRAT: minecraft -> pixel
             $allowedThemes = ['fantasy', 'pink', 'retro', 'cyberpunk', 'pixel', 'nature', 'ocean', 'rainbow'];
             
             if (!in_array($themeName, $allowedThemes)) {
@@ -369,18 +370,16 @@ class User {
         }
     }
 
-    // --- HÄMTA LEVEL PROGRESS (För Dashboard) ---
+    // --- LEVEL PROGRESS ---
     public function getLevelProgress($currentXp) {
         try {
-            // Hämta alla nivågränser
             $stmt = $this->pdo->query("SELECT lc_level, lc_xp_required FROM level_config ORDER BY lc_level ASC");
-            $levels = $stmt->fetchAll(PDO::FETCH_KEY_PAIR); // [1=>0, 2=>100, 3=>300...]
+            $levels = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
             $currentLevelStart = 0;
-            $nextLevelTarget = 100; // Standard om db är tom
+            $nextLevelTarget = 100; // Standard
             $found = false;
 
-            // Hitta var vi befinner oss i stegen
             foreach ($levels as $lvl => $req) {
                 if ($currentXp >= $req) {
                     $currentLevelStart = $req;
@@ -391,20 +390,10 @@ class User {
                 }
             }
 
-            // Om vi nått max level (inga högre krav hittades)
             if (!$found) {
-                return [
-                    'percent' => 100,
-                    'current' => $currentXp,
-                    'target' => $currentXp,
-                    'needed' => 0,
-                    'is_max' => true
-                ];
+                return ['percent' => 100, 'current' => $currentXp, 'target' => $currentXp, 'needed' => 0, 'is_max' => true];
             }
 
-            // Beräkna procent för stapeln
-            // Ex: Level 2 (100xp) till Level 3 (300xp). Range = 200.
-            // Har 150 xp. Har tagit 50 av 200 på denna nivå. = 25%
             $levelRange = $nextLevelTarget - $currentLevelStart;
             $xpGainedInLevel = $currentXp - $currentLevelStart;
             

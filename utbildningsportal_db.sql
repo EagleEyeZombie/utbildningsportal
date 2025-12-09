@@ -33,7 +33,7 @@ CREATE TABLE `achievements` (
   `a_description` text NOT NULL,
   `a_icon` varchar(255) NOT NULL COMMENT 'T.ex. fa-star, fa-trophy',
   `a_xp_required` int NOT NULL DEFAULT '0' COMMENT 'XP som krävs för att få denna'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `achievements`
@@ -73,7 +73,7 @@ CREATE TABLE `classes` (
   `c_name` varchar(255) NOT NULL,
   `c_progress_speed_fk` int DEFAULT NULL,
   `c_teacher_fk` int DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `classes`
@@ -99,7 +99,7 @@ INSERT INTO `classes` (`c_id`, `c_name`, `c_progress_speed_fk`, `c_teacher_fk`) 
 CREATE TABLE `genres` (
   `g_id` int NOT NULL,
   `g_name` varchar(255) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `genres`
@@ -121,7 +121,7 @@ INSERT INTO `genres` (`g_id`, `g_name`) VALUES
 CREATE TABLE `level_config` (
   `lc_level` int NOT NULL,
   `lc_xp_required` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `level_config`
@@ -154,7 +154,7 @@ CREATE TABLE `progress_speeds` (
   `ps_id` int NOT NULL,
   `ps_name` varchar(255) NOT NULL,
   `ps_multiplier` float NOT NULL DEFAULT '1'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `progress_speeds`
@@ -176,7 +176,7 @@ CREATE TABLE `roles` (
   `r_id` int NOT NULL,
   `r_name` varchar(255) NOT NULL,
   `r_level` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `roles`
@@ -198,7 +198,7 @@ CREATE TABLE `student_achievements` (
   `sa_student_fk` int NOT NULL,
   `sa_achievement_fk` int NOT NULL,
   `sa_date_earned` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `student_achievements`
@@ -230,7 +230,7 @@ CREATE TABLE `student_tasks` (
   `st_t_id_fk` int NOT NULL COMMENT 'Task ID',
   `st_completed` tinyint(1) NOT NULL DEFAULT '0',
   `st_score` int DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `student_tasks`
@@ -292,7 +292,7 @@ CREATE TABLE `tasks` (
   `t_level_fk` int NOT NULL,
   `t_xp` int NOT NULL DEFAULT '10' COMMENT 'XP som uppgiften ger',
   `t_created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `tasks`
@@ -594,7 +594,7 @@ CREATE TABLE `task_levels` (
   `tl_id` int NOT NULL,
   `tl_name` varchar(255) NOT NULL,
   `tl_level` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `task_levels`
@@ -621,7 +621,7 @@ INSERT INTO `task_levels` (`tl_id`, `tl_name`, `tl_level`) VALUES
 CREATE TABLE `task_types` (
   `tt_id` int NOT NULL,
   `tt_name` varchar(255) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `task_types`
@@ -656,7 +656,7 @@ CREATE TABLE `users` (
   `u_class_fk` int DEFAULT NULL,
   `u_progress_speed_fk` int NOT NULL DEFAULT '1',
   `u_theme` varchar(50) NOT NULL DEFAULT 'default'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`

@@ -42,9 +42,13 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role
             <a href="admin_dashboard.php" class="btn btn-outline-dark fw-bold">
                 <i class="bi bi-arrow-left"></i> Tillbaka till Adminpanelen
             </a>
-            <h1 class="m-0"><i class="bi bi-people d-none d-md-inline me-2"></i> Hantera Användare</h1>
+            <h1 class="m-0" style="font-family: 'Cinzel Decorative', serif; color: var(--accent-gold);">
+                <i class="bi bi-people d-none d-md-inline me-2"></i>Hantera Användare
+            </h1>
         </div>
-        <a href="register.php" class="btn btn-success col-12 col-lg-auto"><i class="bi bi-person-plus"></i> Skapa ny användare</a>
+        <a href="register.php" class="btn btn-success col-12 col-lg-auto">
+            <i class="bi bi-person-plus"></i> Skapa ny användare
+        </a>
     </div>
 
     <?php if (isset($_GET['deleted']) && $_GET['deleted'] == 'success'): ?>
@@ -104,11 +108,14 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th><?= sortLink('Användarnamn', 'u_name', $sortCol, $sortDir, $search, $role, $limit) ?></th>
+                            <th class="d-none d-md-table-cell"><?= sortLink('Användarnamn', 'u_name', $sortCol, $sortDir, $search, $role, $limit) ?></th>
                             <th><?= sortLink('Namn', 'u_fname', $sortCol, $sortDir, $search, $role, $limit) ?></th>
-                            <th><?= sortLink('E-post', 'u_email', $sortCol, $sortDir, $search, $role, $limit) ?></th>
+                            
+                            <th><?= sortLink('Klass', 'c_name', $sortCol, $sortDir, $search, $role, $limit) ?></th>
+                            
+                            <th class="d-none d-md-table-cell"><?= sortLink('E-post', 'u_email', $sortCol, $sortDir, $search, $role, $limit) ?></th>
                             <th><?= sortLink('Roll', 'r_name', $sortCol, $sortDir, $search, $role, $limit) ?></th>
-                            <th>XP / Takt</th>
+                            <th class="d-none d-md-table-cell">XP / Takt</th>
                             <th class="text-end">Åtgärd</th>
                         </tr>
                     </thead>
@@ -122,15 +129,23 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role
                                     if ($user['r_name'] == 'Elev') $roleClass = 'bg-success';
                                 ?>
                                 <tr>
-                                    <td data-label="Användarnamn" class="fw-bold"><?= htmlspecialchars($user['u_name']) ?></td>
+                                    <td data-label="Användarnamn" class="fw-bold d-none d-md-table-cell"><?= htmlspecialchars($user['u_name']) ?></td>
                                     
                                     <td data-label="Namn"><?= htmlspecialchars($user['u_fname'] . ' ' . $user['u_lname']) ?></td>
                                     
-                                    <td data-label="E-post"><?= htmlspecialchars($user['u_email']) ?></td>
+                                    <td data-label="Klass">
+                                        <?php if (!empty($user['c_name'])): ?>
+                                            <span class="badge bg-info text-dark"><?= htmlspecialchars($user['c_name']) ?></span>
+                                        <?php else: ?>
+                                            <span class="text-muted small">-</span>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <td data-label="E-post" class="d-none d-md-table-cell"><?= htmlspecialchars($user['u_email']) ?></td>
                                     
                                     <td data-label="Roll"><span class="badge <?= $roleClass ?>"><?= htmlspecialchars($user['r_name']) ?></span></td>
                                     
-                                    <td data-label="XP / Takt">
+                                    <td data-label="XP / Takt" class="d-none d-md-table-cell">
                                         <small class="text-muted">
                                             <?= $user['u_xp'] ?> XP 
                                             <?php if(isset($user['ps_name']) && $user['ps_name'] != 'Normal'): ?>
@@ -154,7 +169,7 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr><td colspan="6" class="text-center py-5 text-muted">Inga användare hittades.</td></tr>
+                            <tr><td colspan="7" class="text-center py-5 text-muted">Inga användare hittades.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -168,13 +183,11 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $search, $role
                     <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
                         <a class="page-link" href="?page=<?= $page - 1 ?>&search=<?= $search ?>&role=<?= $role ?>&limit=<?= $limit ?>&sort=<?= $sortCol ?>&dir=<?= $sortDir ?>">Föregående</a>
                     </li>
-                    
                     <?php for($i = 1; $i <= $totalPages; $i++): ?>
                         <li class="page-item <?= ($page == $i) ? 'active' : '' ?>">
                             <a class="page-link" href="?page=<?= $i ?>&search=<?= $search ?>&role=<?= $role ?>&limit=<?= $limit ?>&sort=<?= $sortCol ?>&dir=<?= $sortDir ?>"><?= $i ?></a>
                         </li>
                     <?php endfor; ?>
-                    
                     <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
                         <a class="page-link" href="?page=<?= $page + 1 ?>&search=<?= $search ?>&role=<?= $role ?>&limit=<?= $limit ?>&sort=<?= $sortCol ?>&dir=<?= $sortDir ?>">Nästa</a>
                     </li>
