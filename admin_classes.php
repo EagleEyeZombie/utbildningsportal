@@ -38,8 +38,11 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     }
 }
 
+// --- FILTERLOGIK (NYTT) ---
+$filterTeacher = (isset($_GET['teacher']) && $_GET['teacher'] !== 'all') ? $_GET['teacher'] : null;
+
 // Hämta data
-$allClasses = $school_obj->getAllClasses();
+$allClasses = $school_obj->getAllClasses($filterTeacher); // Skickar med filtret här
 $allTeachers = $school_obj->getAllTeachers();
 
 ?>
@@ -50,20 +53,19 @@ $allTeachers = $school_obj->getAllTeachers();
         <a href="admin_dashboard.php" class="btn btn-outline-dark fw-bold">
             <i class="bi bi-arrow-left"></i> Tillbaka till Adminpanelen
         </a>
-        
-        <h1 class="m-0">
+        <h1 class="m-0" style="font-family: 'Cinzel Decorative', serif; color: var(--accent-gold);">
             <i class="bi bi-people-fill d-none d-md-inline me-2"></i>Hantera Klasser
         </h1>
     </div>
 
-    <div class="card shadow-sm mb-5">
+    <?php if ($errorMsg): ?><div class="alert alert-danger"><?= $errorMsg ?></div><?php endif; ?>
+    <?php if ($successMsg): ?><div class="alert alert-success"><?= $successMsg ?></div><?php endif; ?>
+
+    <div class="card shadow-sm mb-4">
         <div class="card-header bg-success text-dark">
             <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Skapa ny klass</h5>
         </div>
         <div class="card-body">
-            <?php if ($errorMsg): ?><div class="alert alert-danger"><?= $errorMsg ?></div><?php endif; ?>
-            <?php if ($successMsg): ?><div class="alert alert-success"><?= $successMsg ?></div><?php endif; ?>
-
             <form action="" method="POST" class="row g-3 align-items-end">
                 <?= csrfInput() ?>
                 <div class="col-12 col-md-5">
@@ -86,9 +88,34 @@ $allTeachers = $school_obj->getAllTeachers();
         </div>
     </div>
 
+    <div class="card shadow-sm mb-4">
+        <div class="card-body bg-light">
+            <form action="admin_classes.php" method="GET" class="row g-3 align-items-center">
+                <div class="col-md-9">
+                    <label for="filter_teacher" class="form-label fw-bold">Filtrera på lärare:</label>
+                    <select name="teacher" id="filter_teacher" class="form-select" onchange="this.form.submit()">
+                        <option value="all">Alla Klasser</option>
+                        
+                        <option value="missing" <?php echo ($filterTeacher === 'missing') ? 'selected' : ''; ?> style="color: red;">Klasser utan lärare (Raderad)</option>
+                        
+                        <option value="" disabled>---</option>
+                        <?php foreach ($allTeachers as $t): ?>
+                            <option value="<?= $t['u_id'] ?>" <?php echo ($filterTeacher == $t['u_id']) ? 'selected' : ''; ?>>
+                                <?= htmlspecialchars($t['u_name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3 text-end">
+                    <a href="admin_classes.php" class="btn btn-outline-dark w-100 mt-4">Rensa filter</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="card shadow">
         <div class="card-body p-0">
-            <div class=""> 
+            <div class="">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
@@ -103,18 +130,16 @@ $allTeachers = $school_obj->getAllTeachers();
                             <?php foreach ($allClasses as $class): ?>
                                 <tr>
                                     <td data-label="Klassnamn"><strong><?= htmlspecialchars($class['c_name']) ?></strong></td>
-                                    
                                     <td data-label="Lärare">
                                         <?php if ($class['teacher_name']): ?>
                                             <span class="badge bg-info text-dark"><?= htmlspecialchars($class['teacher_name']) ?></span>
                                         <?php else: ?>
-                                            <span class="text-muted small">Ingen lärare</span>
+                                            <span class="badge bg-danger">Saknar lärare</span>
                                         <?php endif; ?>
                                     </td>
-                                    
-                                    <td data-label="Antal Elever" class="text-center"> <span class="badge rounded-pill bg-secondary"><?= $class['student_count'] ?></span>
+                                    <td data-label="Antal Elever" class="text-center">
+                                        <span class="badge rounded-pill bg-secondary"><?= $class['student_count'] ?></span>
                                     </td>
-                                    
                                     <td data-label="Åtgärd" class="text-end">
                                         <a href="edit_class.php?id=<?= $class['c_id'] ?>" class="btn btn-sm btn-primary me-1">
                                             Redigera / Elever
@@ -126,7 +151,7 @@ $allTeachers = $school_obj->getAllTeachers();
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr><td colspan="4" class="text-center py-4 text-muted">Inga klasser skapade än.</td></tr>
+                            <tr><td colspan="4" class="text-center py-5 text-muted">Inga klasser hittades med valda filter.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>

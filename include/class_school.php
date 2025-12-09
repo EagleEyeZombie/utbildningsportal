@@ -9,15 +9,34 @@ class School {
 
     // --- KLASS-HANTERING ---
 
-    public function getAllClasses() {
+    // --- KLASS-HANTERING ---
+
+    // UPPDATERAD: Nu med filter för lärare
+    public function getAllClasses($filterTeacher = null) {
         try {
-            // Hämtar klassinfo + namn på lärare + antal elever
             $sql = "SELECT c.*, u.u_name AS teacher_name, 
                     (SELECT COUNT(*) FROM users WHERE u_class_fk = c.c_id) as student_count
                     FROM classes c
-                    LEFT JOIN users u ON c.c_teacher_fk = u.u_id
-                    ORDER BY c.c_name ASC";
-            $stmt = $this->pdo->query($sql);
+                    LEFT JOIN users u ON c.c_teacher_fk = u.u_id";
+            
+            $params = [];
+
+            // Filtreringslogik
+            if ($filterTeacher !== null) {
+                if ($filterTeacher === 'missing') {
+                    // Visa klasser som saknar lärare
+                    $sql .= " WHERE c.c_teacher_fk IS NULL";
+                } elseif (is_numeric($filterTeacher)) {
+                    // Visa klasser för en specifik lärare
+                    $sql .= " WHERE c.c_teacher_fk = ?";
+                    $params[] = $filterTeacher;
+                }
+            }
+
+            $sql .= " ORDER BY c.c_name ASC";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
             return $stmt->fetchAll();
         } catch (PDOException $e) { return []; }
     }
