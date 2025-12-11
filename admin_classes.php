@@ -46,7 +46,7 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
 // --- FILTERLOGIK (NYTT) ---
 $filterTeacher = (isset($_GET['teacher']) && $_GET['teacher'] !== 'all') ? $_GET['teacher'] : null;
 
-// Hämta data
+// Flöde C. Steg 5.2. Hämta data
 $allClasses = $school_obj->getAllClasses($filterTeacher); // Skickar med filtret här
 
 // Flöde C. Steg 1.1: Inmatning (Frontend & Förberedelse) Hämta lärare: Variabeln $allTeachers fylls genom funktionen $school_obj->getAllTeachers().
