@@ -52,9 +52,10 @@ class School {
 
     public function createClass($name, $teacherId) {
         try {
-            // Om teacherId är tomt (t.ex. "Välj lärare"), sätt till NULL
+            // Flöde C. Steg 4.1. Om teacherId är tomt (t.ex. "Välj lärare"), sätt till NULL
             $teacherId = empty($teacherId) ? null : $teacherId;
             
+            // Flöde C. Steg 4.2.
             $sql = "INSERT INTO classes (c_name, c_teacher_fk) VALUES (?, ?)";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$name, $teacherId]);

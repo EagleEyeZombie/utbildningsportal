@@ -8,16 +8,21 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
 }
 
 $errorMsg = "";
+//Flöde C. Steg 5.1.1.
 $successMsg = "";
 
 // HANTERA: SKAPA KLASS
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_class'])) {
+    // Flöde C. Steg 3.1
     if (verifyCsrfToken($_POST['csrf_token'])) {
+        // Flöde C. Steg 3.2
         $cName = cleanInput($_POST['c_name']);
         $cTeacher = cleanInput($_POST['c_teacher']);
         
+        // Flöde C. Steg 3.3
         $result = $school_obj->createClass($cName, $cTeacher);
         if ($result['success']) {
+            // //Flöde C. Steg 5.1.2.
             $successMsg = "Klassen <strong>$cName</strong> har skapats!";
         } else {
             $errorMsg = "Fel vid skapande: " . $result['error'];
@@ -43,6 +48,8 @@ $filterTeacher = (isset($_GET['teacher']) && $_GET['teacher'] !== 'all') ? $_GET
 
 // Hämta data
 $allClasses = $school_obj->getAllClasses($filterTeacher); // Skickar med filtret här
+
+// Flöde C. Steg 1.1: Inmatning (Frontend & Förberedelse) Hämta lärare: Variabeln $allTeachers fylls genom funktionen $school_obj->getAllTeachers().
 $allTeachers = $school_obj->getAllTeachers();
 
 ?>
@@ -67,14 +74,20 @@ $allTeachers = $school_obj->getAllTeachers();
         </div>
         <div class="card-body">
             <form action="" method="POST" class="row g-3 align-items-end">
+                <!-- Flöde C. Steg 1.5 -->
                 <?= csrfInput() ?>
                 <div class="col-12 col-md-5">
                     <label for="c_name" class="form-label">Klassnamn</label>
+                    <!-- Flöde C. Steg 1.3 -->
                     <input type="text" name="c_name" id="c_name" class="form-control" placeholder="T.ex. 8A, Grupp Röd..." required>
                 </div>
                 <div class="col-12 col-md-4">
+                    <!-- Flöde C. Steg 1.4 -->
                     <label for="c_teacher" class="form-label">Ansvarig Lärare</label>
                     <select name="c_teacher" id="c_teacher" class="form-select">
+<!-- Flöde C. Steg 1.2. Rendera Dropdown: En foreach-loop bygger upp HTML-listan (<select>) med alla lärare.
+Värde: Lärarens ID (value="<?= $t['u_id'] ?>") – Det är detta vi skickar.
+Visning: Lärarens namn – Det är detta användaren ser.-->
                         <option value="">-- Välj lärare (Valfritt) --</option>
                         <?php foreach ($allTeachers as $t): ?>
                             <option value="<?= $t['u_id'] ?>"><?= htmlspecialchars($t['u_name']) ?></option>
@@ -82,6 +95,7 @@ $allTeachers = $school_obj->getAllTeachers();
                     </select>
                 </div>
                 <div class="col-12 col-md-3">
+                    <!-- Flöde C. Steg 2.1 -->
                     <button type="submit" name="create_class" class="btn btn-primary w-100">Spara Klass</button>
                 </div>
             </form>
