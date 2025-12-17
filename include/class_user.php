@@ -72,6 +72,7 @@ class User {
     /**
      * Skapar en ny användare i databasen.
      */
+    // Flöde A. Steg 4
     public function createUser($uname, $ufname, $ulname, $umail, $upass, $urole, $progressSpeed = 1, $classId = null){
         try {
             $hashedPassword = password_hash($upass, PASSWORD_DEFAULT);
@@ -79,11 +80,14 @@ class User {
 
             if (empty($classId)) $classId = null;
 
+            // Flöde A. Steg 5.1
             $stmt = $this->pdo->prepare("INSERT INTO users (u_name, u_fname, u_lname, u_email, u_password, u_isactive, u_role_fk, u_progress_speed_fk, u_class_fk, u_created) 
                                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
             
+            // Flöde A. Steg 5.2
             $stmt->execute([$uname, $ufname, $ulname, $umail, $hashedPassword, 1, $urole, $progressSpeed, $classId]);
 
+            // Flöde A. Steg 5.3
             $this->pdo->commit();
             return ['success' => true];
 
@@ -292,6 +296,7 @@ class User {
     }
 
     // --- LEVEL & XP SYSTEM ---
+    // Flöde B. Steg 2.1: Hämta nuvarande XP och eventuell "Multiplier"
     public function addXpAndCheckLevelup($userId, $baseXpAmount) {
         try {
             $sql = "SELECT u.u_xp, u.u_level, ps.ps_multiplier 
@@ -308,12 +313,15 @@ class User {
             $currentLevel = $user['u_level'];
             $multiplier = $user['ps_multiplier'] ?? 1.0;
 
+            // Flöde B. Steg 2.2: Beräkna ny total XP
             $xpWithBonus = floor($baseXpAmount * $multiplier);
             $newXp = $currentXp + $xpWithBonus;
 
+            // Flöde B. Steg 2.3: Hämta nivå-regler från DATABASEN (Inte hårdkodat!)
             $stmtConfig = $this->pdo->query("SELECT lc_level, lc_xp_required FROM level_config ORDER BY lc_level ASC");
             $levelConfig = $stmtConfig->fetchAll(PDO::FETCH_KEY_PAIR);
 
+            // Flöde B. Steg 2.4: Loopa igenom reglerna för att hitta rätt nivå
             $calculatedLevel = 1;
             if ($levelConfig) {
                 foreach ($levelConfig as $lvl => $reqXp) {

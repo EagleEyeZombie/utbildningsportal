@@ -5,3 +5,6 @@
 ~$*.docx
 ~$*.doc
 *.tmp
+*.bkp
+*.drawio*
+*.fig

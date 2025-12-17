@@ -58,6 +58,7 @@ class School {
             // Flöde C. Steg 4.2.
             $sql = "INSERT INTO classes (c_name, c_teacher_fk) VALUES (?, ?)";
             $stmt = $this->pdo->prepare($sql);
+            // Flöde C. Steg 4.3.
             $stmt->execute([$name, $teacherId]);
             return ['success' => true];
         } catch (PDOException $e) { return ['success' => false, 'error' => $e->getMessage()]; }

@@ -361,10 +361,12 @@ class Task {
     public function checkAchievements($studentId, $currentXp) {
         $newBadges = [];
         try {
+            // Flöde B. Steg 3.1: Hämta elevens nuvarande badges (för att inte ge dubbletter)
             $stmt = $this->pdo->prepare("SELECT sa_achievement_fk FROM student_achievements WHERE sa_student_fk = ?");
             $stmt->execute([$studentId]);
             $myBadges = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
+            // Flöde B. Steg 3.2: Kolla XP-baserade badges (Databasstyrd logik)
             $stmt = $this->pdo->prepare("SELECT * FROM achievements WHERE a_xp_required <= ? AND a_xp_required < 90000");
             $stmt->execute([$currentXp]);
             $xpBadges = $stmt->fetchAll();
@@ -407,11 +409,13 @@ class Task {
                 }
             }
 
+            // Flöde B. Steg 3.3: Kolla "Grind"-badges (Antal klarade uppgifter)
             $grindMapping = [
                 'Nyfiken Start' => [1, 5], 'Uppvärmd' => [1, 10], 'På God Väg' => [5, 5],
                 'Erfaren' => [5, 10], 'Eliten' => [10, 5], 'Omöjlig' => [10, 10]
             ];
             foreach ($grindMapping as $badgeName => $req) {
+                // Här anropas hjälpfunktionen countCompletedTasksAtLevel
                 $badge = $this->getBadgeByName($badgeName);
                 if ($badge && !in_array($badge['a_id'], $myBadges)) {
                     if ($this->countCompletedTasksAtLevel($studentId, $req[0]) >= $req[1]) {

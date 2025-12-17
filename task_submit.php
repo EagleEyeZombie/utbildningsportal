@@ -15,6 +15,8 @@ if (!isset($_POST['csrf_token']) || !verifyCsrfToken($_POST['csrf_token'])) {
 }
 
 // Hämta data
+// --- RÄTTNING ---
+// Flöde B. Steg 1.1: Hämta svaren från POST
 $taskId = $_POST['task_id'];
 $userAnswers = isset($_POST['answers']) ? $_POST['answers'] : [];
 $userId = $_SESSION['user_id'];
@@ -27,7 +29,7 @@ $taskTypeName = strtolower($task['type_name']);
 $correctCount = 0;
 $totalQuestions = 0;
 
-// --- RÄTTNING ---
+
 
 // 1. SORTERING
 if (strpos($taskTypeName, 'sortering') !== false) {
@@ -90,6 +92,7 @@ else {
 }
 
 // --- RESULTATBERÄKNING ---
+// Flöde B. Steg 1.2: Beräkna resultat och godkännande
 $scorePercent = ($totalQuestions > 0) ? round(($correctCount / $totalQuestions) * 100) : 0;
 $passed = ($scorePercent >= 70) ? 1 : 0;
 
@@ -100,6 +103,7 @@ $newLevel = $_SESSION['user_level'];
 $gainedXp = 0; 
 
 // Spara resultatet
+// Flöde B. Steg 1.3: Spara resultatet i databasen (student_tasks)
 $saved = $task_obj->saveTaskResult($userId, $taskId, $scorePercent, $passed);
 
 if ($passed) {
@@ -146,6 +150,7 @@ if ($passed) {
                         <i class="bi bi-trophy-fill text-warning display-1"></i>
                         <h2 class="mt-3 text-success">Bra jobbat!</h2>
                         
+                    <!-- Flöde B. Steg 4 -->
                         <?php if ($leveledUp): ?>
                             <div class="alert alert-info mt-3 shadow-sm border-info">
                                 <h4><i class="bi bi-arrow-up-circle-fill"></i> LEVEL UP!</h4>

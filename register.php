@@ -33,6 +33,7 @@ $errorMsg = "";
 $successMsg = "";
 
 // 2. Hantera formulär
+// Flöde A. Steg 2.1
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register-submit'])) {
     
 // Kontrollera om token finns, annars använd tom sträng för att undvika felmeddelande
@@ -42,6 +43,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register-submit'])) {
         die("Ogiltig CSRF-token. Försök ladda om sidan.");
     }
 
+    // Flöde A. Steg 2.2
+    // Flöde A. Steg 3.1
     $uname = cleanInput($_POST['uname']);
     $ufname = cleanInput($_POST['ufname']);
     $ulname = cleanInput($_POST['ulname']);
@@ -56,12 +59,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register-submit'])) {
     // Hämta Klass (Kan vara tom)
     $uclass = !empty($_POST['uclass']) ? cleanInput($_POST['uclass']) : null;
 
+    // Flöde A. Steg 3.2
     $checkResult = $user_obj->checkUserRegisterInfo($uname, $umail, $upass, $upassrpt, "create");
 
     if (!$checkResult['success']) {
         $errorMsg = $checkResult['error'];
     } else {
         // Skicka med både hastighet och klass till create-funktionen
+        
+        // Flöde A. Steg 4 Om valideringen går igenom (returnerar true), anropas createUser. Här sker magin med lösenordet.
         $createResult = $user_obj->createUser($uname, $ufname, $ulname, $umail, $upass, $urole, $uspeed, $uclass);
 
         if ($createResult['success']) {
@@ -95,9 +101,12 @@ $recentUsers = $user_obj->getRecentUsers(20);
                         <div class="alert alert-success"><?= $successMsg ?></div>
                     <?php endif; ?>
 
+                    <!-- Flöde A. Steg 1.2-->
+
                     <form action="register.php" method="POST">
                         <?php echo csrfInput(); ?>
 
+                        <!-- Flöde A. Steg 1.1-->
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="ufname" class="form-label">Förnamn</label>
