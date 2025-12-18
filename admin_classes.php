@@ -1,30 +1,48 @@
 <?php
 require_once "include/header.php";
 
-// --- SÄKERHETSVAKT ---
+// ---------------------------------------------------------
+// SÄKERHETSVAKT (RBAC) - FLÖDE C
+// ---------------------------------------------------------
+// 1. Autentisering: Är användaren inloggad?
 if (!isset($_SESSION['user_id']) || $_SESSION['role_level'] < 5) {
+    // 2. Auktorisering: Har användaren rätt nivå? (5 = Lärare)
     header("Location: login.php");
     exit;
 }
 
 $errorMsg = "";
 //Flöde C. Steg 5.1.1.
+// Här initierar vi variabler för feedback till användaren (UI/UX).
 $successMsg = "";
 
-// HANTERA: SKAPA KLASS
+// ---------------------------------------------------------
+// 1. HANTERA FORMULÄR: SKAPA KLASS (CREATE)
+// ---------------------------------------------------------
+// Vi lyssnar efter ett POST-anrop. Detta sker när knappen "Spara Klass" trycks ner.
+
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_class'])) {
+    
     // Flöde C. Steg 3.1
+    // SÄKERHET (CSRF): Vi verifierar att anropet kommer från vårt eget formulär.
+    // Detta förhindrar att andra sidor postar data till vår server i smyg.
     if (verifyCsrfToken($_POST['csrf_token'])) {
+        
         // Flöde C. Steg 3.2
+        // SÄKERHET (Sanitering): Vi tvättar indatan för att förhindra XSS och SQL Injection.
         $cName = cleanInput($_POST['c_name']);
         $cTeacher = cleanInput($_POST['c_teacher']);
         
         // Flöde C. Steg 3.3
+        // ANROPA MODELLEN: Vi skickar den tvättade datan till School-klassen som sköter SQL-frågan.
         $result = $school_obj->createClass($cName, $cTeacher);
+        
         if ($result['success']) {
             // //Flöde C. Steg 5.1.2.
+            // Feedback: Om allt gick bra visar vi ett grönt meddelande.
             $successMsg = "Klassen <strong>$cName</strong> har skapats!";
         } else {
+            // Felhantering: Om databasen protesterar visar vi felet.
             $errorMsg = "Fel vid skapande: " . $result['error'];
         }
     } else {
@@ -32,10 +50,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_class'])) {
     }
 }
 
-// HANTERA: TA BORT KLASS
+// ---------------------------------------------------------
+// 2. HANTERA ÅTGÄRD: RADERA KLASS (DELETE)
+// ---------------------------------------------------------
+// Här lyssnar vi på URL-parametrar (GET). T.ex. admin_classes.php?delete=5
+
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
+    // SÄKERHET: is_numeric() säkerställer att ID:t faktiskt är en siffra.
     $delId = $_GET['delete'];
+    
+    // Anropa modellen för att utföra raderingen.
     $result = $school_obj->deleteClass($delId);
+    
     if ($result['success']) {
         $successMsg = "Klassen har tagits bort.";
     } else {
@@ -43,13 +69,21 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     }
 }
 
+// ---------------------------------------------------------
+// 3. HÄMTA DATA & FILTRERING (READ)
+// ---------------------------------------------------------
+
 // --- FILTERLOGIK (NYTT) ---
+// Vi kollar om användaren valt att filtrera listan på en specifik lärare.
 $filterTeacher = (isset($_GET['teacher']) && $_GET['teacher'] !== 'all') ? $_GET['teacher'] : null;
 
 // Flöde C. Steg 5.2. Hämta data
+// Vi hämtar klasslistan från modellen. Om ett filter är valt skickas det med.
+// Modellen anpassar då SQL-frågan (WHERE c_teacher_fk = ?).
 $allClasses = $school_obj->getAllClasses($filterTeacher); // Skickar med filtret här
 
 // Flöde C. Steg 1.1: Inmatning (Frontend & Förberedelse) Hämta lärare: Variabeln $allTeachers fylls genom funktionen $school_obj->getAllTeachers().
+// Vi behöver listan på lärare BÅDE för dropdown-menyn i "Skapa klass" OCH för filtret.
 $allTeachers = $school_obj->getAllTeachers();
 
 ?>
@@ -74,28 +108,23 @@ $allTeachers = $school_obj->getAllTeachers();
         </div>
         <div class="card-body">
             <form action="" method="POST" class="row g-3 align-items-end">
-                <!-- Flöde C. Steg 1.5 -->
                 <?= csrfInput() ?>
+                
                 <div class="col-12 col-md-5">
                     <label for="c_name" class="form-label">Klassnamn</label>
-                    <!-- Flöde C. Steg 1.3 -->
                     <input type="text" name="c_name" id="c_name" class="form-control" placeholder="T.ex. 8A, Grupp Röd..." required>
                 </div>
+                
                 <div class="col-12 col-md-4">
-                    <!-- Flöde C. Steg 1.4 -->
                     <label for="c_teacher" class="form-label">Ansvarig Lärare</label>
                     <select name="c_teacher" id="c_teacher" class="form-select">
-<!-- Flöde C. Steg 1.2. Rendera Dropdown: En foreach-loop bygger upp HTML-listan (<select>) med alla lärare.
-Värde: Lärarens ID (value="<?= $t['u_id'] ?>") – Det är detta vi skickar.
-Visning: Lärarens namn – Det är detta användaren ser.-->
-                        <option value="">-- Välj lärare (Valfritt) --</option>
+<option value="">-- Välj lärare (Valfritt) --</option>
                         <?php foreach ($allTeachers as $t): ?>
                             <option value="<?= $t['u_id'] ?>"><?= htmlspecialchars($t['u_name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="col-12 col-md-3">
-                    <!-- Flöde C. Steg 2.1 -->
                     <button type="submit" name="create_class" class="btn btn-primary w-100">Spara Klass</button>
                 </div>
             </form>
@@ -144,6 +173,7 @@ Visning: Lärarens namn – Det är detta användaren ser.-->
                             <?php foreach ($allClasses as $class): ?>
                                 <tr>
                                     <td data-label="Klassnamn"><strong><?= htmlspecialchars($class['c_name']) ?></strong></td>
+                                    
                                     <td data-label="Lärare">
                                         <?php if ($class['teacher_name']): ?>
                                             <span class="badge bg-info text-dark"><?= htmlspecialchars($class['teacher_name']) ?></span>
@@ -151,9 +181,11 @@ Visning: Lärarens namn – Det är detta användaren ser.-->
                                             <span class="badge bg-danger">Saknar lärare</span>
                                         <?php endif; ?>
                                     </td>
+                                    
                                     <td data-label="Antal Elever" class="text-center">
                                         <span class="badge rounded-pill bg-secondary"><?= $class['student_count'] ?></span>
                                     </td>
+                                    
                                     <td data-label="Åtgärd" class="text-end">
                                         <a href="edit_class.php?id=<?= $class['c_id'] ?>" class="btn btn-sm btn-primary me-1">
                                             Redigera / Elever

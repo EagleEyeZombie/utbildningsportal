@@ -1,17 +1,27 @@
 <?php
 require_once "include/header.php";
 
-// --- SÄKERHETSVAKT ---
+// ---------------------------------------------------------
+// SÄKERHETSVAKT (RBAC - Role Based Access Control)
+// ---------------------------------------------------------
+// Flöde C: Behörighet
+// 1. Autentisering: Är sessionen startad?
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
 
+// 2. Auktorisering: Har användaren rätt nivå?
+// Vi kräver nivå 5 (Lärare) för att få skapa uppgifter.
 if ($_SESSION['role_level'] < 5) {
     header("Location: 403.php");
     exit;
 }
 
+// ---------------------------------------------------------
+// 1. HÄMTA DATA TILL FORMULÄRET (VIEW PREPARATION)
+// ---------------------------------------------------------
+// För att fylla dropdown-listorna hämtar vi metadata från databasen.
 $types = $task_obj->getAllTypes();
 $levels = $task_obj->getAllLevels();
 $allClasses = $task_obj->getAllClasses();
@@ -19,36 +29,54 @@ $allGenres = $task_obj->getAllGenres();
 $errorMsg = "";
 $successMsg = "";
 
+// ---------------------------------------------------------
+// 2. HANTERA FORMULÄR-INSKICK (CONTROLLER)
+// ---------------------------------------------------------
+// Detta block körs ENDAST när användaren trycker på "Spara Uppgift" (POST).
+
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
     
-    // Säkrare token-koll
+    // --- SÄKERHET: CSRF-TOKEN ---
+    // Vi verifierar att anropet kommer från vårt formulär och inte är en attack (Cross-Site Request Forgery).
     $token = isset($_POST['csrf_token']) ? $_POST['csrf_token'] : '';
     if (!verifyCsrfToken($token)) { die("Ogiltig CSRF-token (Säkerhetsåtgärd)."); }
 
+    // --- SÄKERHET: SANITERING (XSS) ---
+    // cleanInput() tvättar bort HTML-taggar och farliga tecken från all textinput.
     $tName = cleanInput($_POST['t_name']);
     $tType = cleanInput($_POST['t_type']);
     $tLevel = cleanInput($_POST['t_level']);
     $tText = cleanInput($_POST['t_text']); 
-    $teacherId = $_SESSION['user_id'];
+    $teacherId = $_SESSION['user_id']; // Vi hämtar ID från sessionen (säkrare än att skicka via formulär)
     $tXp = cleanInput($_POST['t_xp']);
+    
+    // Hantera valfria fält (nullable i databasen)
     $tClass = !empty($_POST['t_class']) ? cleanInput($_POST['t_class']) : null;
     $tGenre = !empty($_POST['t_genre']) ? cleanInput($_POST['t_genre']) : null;
 
+    // --- STRUKTURERA DATA (LOGIK) ---
+    // Här bygger vi upp den array som ska bli JSON.
+    // Beroende på vilken uppgiftstyp (flerval, sortering etc.) användaren valt,
+    // hämtar vi data från olika delar av $_POST-arrayen.
     $questionsData = [];
     
+    // Hämta typnamnet från DB för att veta vilken logik vi ska köra
     $typeNameQuery = $pdo->prepare("SELECT tt_name FROM task_types WHERE tt_id = ?");
     $typeNameQuery->execute([$tType]);
     $taskTypeName = strtolower($typeNameQuery->fetchColumn());
     
+    // Fall A: Flervalsfrågor (Quiz)
     if (strpos($taskTypeName, 'flerval') !== false) {
         if (isset($_POST['questions_mc'])) {
             foreach ($_POST['questions_mc'] as $q) {
                 if (!empty($q['question'])) {
+                    // Vi sparar frågan, rätt svar och 3 felaktiga svar.
                     $questionsData[] = ['q' => cleanInput($q['question']), 'a' => cleanInput($q['correct']), 'w1' => cleanInput($q['wrong1']), 'w2' => cleanInput($q['wrong2']), 'w3' => cleanInput($q['wrong3'])];
                 }
             }
         }
     } 
+    // Fall B: Sant eller Falskt
     elseif (strpos($taskTypeName, 'sant/falskt') !== false) {
         if (isset($_POST['questions_tf'])) {
             foreach ($_POST['questions_tf'] as $q) {
@@ -58,14 +86,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
             }
         }
     }
+    // Fall C: Sortering (Drag & Drop order)
     elseif (strpos($taskTypeName, 'sortering') !== false) {
         if (isset($_POST['questions_sort'][0]['sentences'])) {
+            // Vi delar upp textrutan rad för rad (\n) och sparar som en array.
             $sentences = trim($_POST['questions_sort'][0]['sentences']);
             $sentencesArray = preg_split('/(\r\n|\r|\n)/', $sentences, -1, PREG_SPLIT_NO_EMPTY);
             $cleanedArray = array_map('cleanInput', $sentencesArray);
             $questionsData = ['s' => $cleanedArray];
         }
     }
+    // Fall D: Para ihop (Memory/Matchning)
     elseif (strpos($taskTypeName, 'para ihop') !== false) {
         if (isset($_POST['questions_pair'])) {
             foreach ($_POST['questions_pair'] as $p) {
@@ -75,6 +106,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
             }
         }
     }
+    // Fall E: Textluckor (Cloze test)
     elseif (strpos($taskTypeName, 'textluckor') !== false) {
         $gaps = [];
         if (isset($_POST['questions_gaps'])) {
@@ -85,6 +117,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
             }
         }
         
+        // Distraktorer (Falska ord i ordbanken)
         $distractors = [];
         if (!empty($_POST['gap_distractors'])) {
             $rawDistractors = explode(',', $_POST['gap_distractors']);
@@ -97,8 +130,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
         $questionsData = ['gaps' => $gaps, 'distractors' => $distractors];
     }
 
+    // --- JSON ENCODING ---
+    // Vi konverterar PHP-arrayen till en JSON-sträng.
+    // UNESCAPED_UNICODE ser till att Å, Ä, Ö sparas som tecken, inte kod.
     $jsonQuestions = json_encode($questionsData, JSON_UNESCAPED_UNICODE);
 
+    // --- ANROPA MODELLEN (SPARA TILL DB) ---
+    // Vi skickar all tvättad och packad data till Task-klassen.
     $result = $task_obj->createTask($tName, $tType, $tLevel, $teacherId, $tClass, $tGenre, $tText, $jsonQuestions, $tXp);
 
     if ($result['success']) {
@@ -122,6 +160,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
     <?php if ($successMsg): ?> <div class="alert alert-success"><?= $successMsg ?></div> <?php endif; ?>
 
     <form action="" method="POST" id="taskForm">
+        
         <?= csrfInput() ?>
 
         <div class="row">
@@ -251,12 +290,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
 </div>
 
 <script>
+    // Funktioner för att lägga till nya inmatningsfält dynamiskt
+    // Vi använder "Template Literals" (backticks) för att skapa HTML.
+
     // --- FLERVAL ---
     let questionCount = 0;
     function addQuestionField() {
         questionCount++;
         const container = document.getElementById('questions-container');
-        // FIX: Unika ID:n och labels
+        // Unika ID:n behövs inte för PHP (bara name[]), men bra för tillgänglighet/label.
         const html = `
         <div class="border p-3 mb-3 rounded bg-light position-relative" id="q-row-${questionCount}">
             <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()"></button>
@@ -287,7 +329,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
     function addTrueFalseField() {
         tfQuestionCount++;
         const container = document.getElementById('tf-questions-container');
-        // FIX: Unika ID:n och labels
         const html = `
         <div class="border p-3 mb-3 rounded bg-light position-relative" id="tf-q-row-${tfQuestionCount}">
             <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()"></button>
@@ -311,7 +352,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
     function addPairField() {
         pairCount++;
         const container = document.getElementById('pair-questions-container');
-        // FIX: Unika ID:n och labels
         const html = `
         <div class="border p-3 mb-3 rounded bg-light position-relative" id="pair-row-${pairCount}">
             <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()"></button>
@@ -334,7 +374,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
     function addGapField() {
         gapCount++;
         const container = document.getElementById('gaps-container');
-        // FIX: Unika ID:n och labels
         const html = `
         <div class="border p-3 mb-3 rounded bg-light position-relative" id="gap-row-${gapCount}">
             <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="this.parentElement.remove()"></button>
@@ -352,19 +391,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
         container.insertAdjacentHTML('beforeend', html);
     }
 
-    // --- BYT FORMULÄR ---
+    // --- BYT FORMULÄR LOGIK ---
     const dropdown = document.getElementById('taskTypeDropdown');
     const forms = document.querySelectorAll('.task-form-section');
     
+    // Lyssnar på dropdown och visar rätt formulärdel
     function updateForms() {
         const selectedText = dropdown.options[dropdown.selectedIndex].text.toLowerCase();
+        
+        // Dölj alla sektioner först
         forms.forEach(form => {
             form.classList.add('d-none');
+            // Stäng av "required" på dolda fält så formuläret kan skickas utan fel
             form.querySelectorAll('input, textarea, select').forEach(input => {
                 input.disabled = true;
                 input.required = false; 
             });
         });
+        
+        // Hitta vilken sektion som ska visas
         let activeFormId = null;
         if (selectedText.includes('flerval')) { activeFormId = 'form-flerval'; } 
         else if (selectedText.includes('sant/falskt')) { activeFormId = 'form-sant-falskt'; } 
@@ -372,12 +417,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
         else if (selectedText.includes('para ihop')) { activeFormId = 'form-paraihop'; }
         else if (selectedText.includes('textluckor')) { activeFormId = 'form-textluckor'; }
 
+        // Visa sektionen och aktivera fälten
         if (activeFormId) {
             const activeForm = document.getElementById(activeFormId);
             activeForm.classList.remove('d-none');
             activeForm.querySelectorAll('input, textarea, select').forEach(input => {
                 input.disabled = false;
                 const name = input.name;
+                // Återställ required på relevanta fält
                 if (name.includes('[question]') || name.includes('[correct]') || name.includes('[term]') || name.includes('[def]') || name.includes('[sentences]') || name.includes('[sentence]') || name.includes('[word]')) {
                     input.required = true;
                 }
@@ -389,6 +436,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
 
     function initForms() {
         updateForms(); 
+        // Lägg till ett tomt fält direkt för bättre UX
         const selectedText = dropdown.options[dropdown.selectedIndex].text.toLowerCase();
         if (selectedText.includes('flerval')) { addQuestionField(); } 
         else if (selectedText.includes('sant/falskt')) { addTrueFalseField(); }
@@ -399,6 +447,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create-task'])) {
     window.onload = initForms;
 
     // --- VALIDERING (SVENSKA FELMEDDELANDEN) ---
+    // HTML5 validering visar ofta engelska/browser-språk. Här tvingar vi in svenska.
     document.addEventListener('invalid', function(e) {
         const target = e.target;
         if (target.validity.valueMissing) {

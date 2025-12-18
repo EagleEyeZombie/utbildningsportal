@@ -3,11 +3,18 @@
 class Task {
     private $pdo;
 
+    // KONSTRUKTOR: Dependency Injection
+    // Vi tar emot databaskopplingen utifrån. Detta gör klassen oberoende av
+    // hur uppkopplingen skapades (bra för testning och underhåll).
     public function __construct($pdo) {
         $this->pdo = $pdo;
     }
 
-    // --- HÄMTA GRUNDDATA ---
+    // ---------------------------------------------------------
+    // HÄMTA METADATA (För formulär och listor)
+    // ---------------------------------------------------------
+    // Dessa metoder hämtar grunddata som behövs för dropdown-menyer i admin-panelen.
+
     public function getAllGenres() {
         try {
             $stmt = $this->pdo->query("SELECT * FROM genres ORDER BY g_name ASC");
@@ -33,13 +40,22 @@ class Task {
         } catch (PDOException $e) { return []; }
     }
 
-    // --- CRUD ---
+    // ---------------------------------------------------------
+    // CRUD - CREATE, UPDATE, DELETE (Flöde C - Admin)
+    // ---------------------------------------------------------
+
+    // SKAPA UPPGIFT (CREATE)
+    // Tar emot all data från admin_create_task.php och sparar i databasen.
     public function createTask($name, $typeId, $levelId, $teacherId, $classId, $genreId, $text, $questionsJson, $t_xp) {
         try {
             // ÄNDRAT: Lade till t_created i SQL-frågan
+            // Vi använder databasens inbyggda funktion NOW() för att sätta tidsstämpeln.
+            // Frågetecknen (?) är platshållare för Prepared Statements (Säkerhet mot SQL Injection).
             $sql = "INSERT INTO tasks (t_name, t_type_fk, t_level_fk, t_teacher_fk, t_class_fk, t_genre_fk, t_text, t_questions, t_xp, t_created) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             $stmt = $this->pdo->prepare($sql);
+            
+            // Execute kör frågan med datan i en separat kanal, vilket omöjliggör injektioner.
             if ($stmt->execute([$name, $typeId, $levelId, $teacherId, $classId, $genreId, $text, $questionsJson, $t_xp])) {
                 return ['success' => true];
             }
@@ -47,12 +63,15 @@ class Task {
         } catch (PDOException $e) { return ['success' => false, 'error' => $e->getMessage()]; }
     }
 
+    // UPPDATERA UPPGIFT (UPDATE)
+    // Uppdaterar en befintlig rad. Observera WHERE t_id = ? på slutet för att inte skriva över allt.
     public function updateTask($taskId, $name, $typeId, $levelId, $classId, $genreId, $text, $questionsJson, $t_xp, $teacherId) { // <--- $teacherId tillagd
     try {
         // Lade till t_teacher_fk=? i SQL
         $sql = "UPDATE tasks SET t_name=?, t_type_fk=?, t_level_fk=?, t_class_fk=?, t_genre_fk=?, t_text=?, t_questions=?, t_xp=?, t_teacher_fk=? WHERE t_id=?";
         $stmt = $this->pdo->prepare($sql);
         // Lade till $teacherId i execute-arrayen (näst sist)
+        // Ordningen i arrayen måste matcha ordningen på frågetecknen exakt.
         if ($stmt->execute([$name, $typeId, $levelId, $classId, $genreId, $text, $questionsJson, $t_xp, $teacherId, $taskId])) {
             return ['success' => true];
         }
@@ -60,6 +79,9 @@ class Task {
     } catch (PDOException $e) { return ['success' => false, 'error' => $e->getMessage()]; }
 }
 
+    // TA BORT UPPGIFT (DELETE)
+    // Raderar en uppgift. Om du har Foreign Key constraints inställda på CASCADE i databasen,
+    // kommer även alla elevresultat kopplade till denna uppgift att försvinna automatiskt.
     public function deleteTask($taskId) {
         try {
             $sql = "DELETE FROM tasks WHERE t_id = ?";
@@ -69,7 +91,12 @@ class Task {
         } catch (PDOException $e) { return ['success' => false, 'error' => $e->getMessage()]; }
     }
 
-    // --- HÄMTA UPPGIFTER (Listor) ---
+    // ---------------------------------------------------------
+    // HÄMTA UPPGIFTER & SÖKNING (Flöde C & D)
+    // ---------------------------------------------------------
+
+    // HÄMTA ALLT (Enkel lista)
+    // Används sällan i produktion förutom vid felsökning, då den saknar filter.
     public function getAllTasks() {
         // Enkel hämtning utan filter (kan användas som fallback)
         try {
@@ -89,6 +116,8 @@ class Task {
         } catch (PDOException $e) { return []; }
     }
     
+    // HÄMTA EN (För Task View / Edit)
+    // Används i både admin_edit_task.php (för att fylla formuläret) och task_view.php (för att visa uppgiften).
     public function getTaskById($id) {
         try {
             $sql = "SELECT tasks.*, users.u_name AS teacher_name, task_types.tt_name AS type_name, 
@@ -107,7 +136,9 @@ class Task {
         } catch (PDOException $e) { return false; }
     }
 
-    // Hämta uppgifter för en elev (med filter)
+    // HÄMTA FÖR ELEV (Dashboard - Sökresultat)
+    // Denna funktion används när eleven filtrerar på dashboarden.
+    // Den JOINar med `student_tasks` för att vi ska kunna se om eleven redan klarat uppgiften (st_completed).
     public function getTasksForStudent($studentId, $typeId = null, $genreId = null) {
         try {
             $sql = "SELECT tasks.*, users.u_name AS teacher_name, task_types.tt_name AS type_name, 
@@ -125,6 +156,7 @@ class Task {
             $params = [$studentId]; 
             $whereConditions = [];
 
+            // Bygger dynamisk WHERE-sats baserat på filter
             if ($typeId !== null && is_numeric($typeId)) {
                 $whereConditions[] = "tasks.t_type_fk = ?";
                 $params[] = $typeId; 
@@ -145,10 +177,12 @@ class Task {
         } catch (PDOException $e) { return []; }
     }
 
-    // --- ADMIN: HÄMTA UPPGIFTER MED FILTER, SORTERING & PAGINERING ---
+    // --- ADMIN: AVANCERAD FILTRERING & PAGINERING (Flöde C) ---
+    // Denna funktion driver listan i admin_tasks.php.
     // UPPDATERAD: Hanterar nu 'missing' för lärare (raderade användare)
     public function getTasksFiltered($teacherId, $typeId, $levelId, $classId, $genreId, $sortCol, $sortDir, $limit, $offset) {
         try {
+            // Whitelisting för sortering för att förhindra SQL Injection i ORDER BY
             $allowedSorts = ['t_id', 't_name', 'type_name', 'genre_name', 'level_name', 't_xp', 'teacher_name', 't_created'];
             if (!in_array($sortCol, $allowedSorts)) $sortCol = 't_created'; 
             $sortDir = strtoupper($sortDir) === 'ASC' ? 'ASC' : 'DESC';
@@ -166,7 +200,7 @@ class Task {
             $whereConditions = [];
             $params = [];
 
-            // NY LOGIK HÄR:
+            // NY LOGIK HÄR: Filter för lärare
             if ($teacherId !== null) { 
                 if ($teacherId === 'missing') {
                     // Hämta uppgifter där lärare är NULL (raderad)
@@ -187,6 +221,7 @@ class Task {
                 $sql .= " WHERE " . implode(" AND ", $whereConditions);
             }
             
+            // Paginering: LIMIT och OFFSET bestämmer vilken sida vi visar
             $sql .= " ORDER BY $sortCol $sortDir LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
             
             $stmt = $this->pdo->prepare($sql);
@@ -195,7 +230,8 @@ class Task {
         } catch (PDOException $e) { return []; }
     }
     
-    // --- ADMIN: RÄKNA ANTAL (Måste också uppdateras för paginering!) ---
+    // --- ADMIN: RÄKNA TOTALT ANTAL (För Paginering) ---
+    // Måste ha samma filterlogik som getTasksFiltered för att räkna rätt sidor.
     public function getTasksCountFiltered($teacherId, $typeId, $levelId, $classId, $genreId) {
         try {
             $sql = "SELECT COUNT(*) FROM tasks";
@@ -227,6 +263,13 @@ class Task {
         } catch (PDOException $e) { return 0; }
     }
 
+    // ---------------------------------------------------------
+    // REKOMMENDATIONSMOTOR (Flöde D - Dashboard)
+    // ---------------------------------------------------------
+    // Denna funktion använder UNION för att kombinera tre olika listor till en:
+    // 1. Senast klarade (för att förbättra resultat).
+    // 2. Nästa logiska steg (Progression i en serie).
+    // 3. Nya äventyr (Level 1-uppgifter).
     // --- REKOMMENDATIONER (Dashboard) - KVAR SOM FÖRUT ---
     public function getRecentAndNextTasks($studentId, $limit = 8) {
         try {
@@ -301,7 +344,13 @@ class Task {
         } catch (PDOException $e) { return []; }
     }
 
-    // --- PROGRESSION & RESULTAT ---
+    // ---------------------------------------------------------
+    // PROGRESSION & RESULTAT (Flöde B & D)
+    // ---------------------------------------------------------
+
+    // LÅS UPP NIVÅER (Flöde D - Säkerhet)
+    // Beräknar vilken nivå eleven har rätt att se baserat på vad de klarat tidigare.
+    // Returnerar MaxLevel + 1.
     public function getUnlockedLevel($studentId, $typeId, $genreId = null) {
         try {
             $sql = "SELECT MAX(task_levels.tl_level) 
@@ -325,6 +374,8 @@ class Task {
         } catch (PDOException $e) { return 1; }
     }
 
+    // SPARA RESULTAT (Flöde B)
+    // Sparar resultatet i `student_tasks`. Om raden finns uppdateras den (UPDATE), annars skapas den (INSERT).
     public function saveTaskResult($studentId, $taskId, $score, $completed) {
          try {
             $stmt = $this->pdo->prepare("SELECT st_id FROM student_tasks WHERE st_s_id_fk = ? AND st_t_id_fk = ?");
@@ -344,7 +395,11 @@ class Task {
         } catch (PDOException $e) { return false; }
     }
 
-    // --- GAMIFICATION (BADGES) ---
+    // ---------------------------------------------------------
+    // GAMIFICATION (Flöde B - Badges)
+    // ---------------------------------------------------------
+
+    // Hämta elevens badges
     public function getStudentBadges($studentId) {
         try {
             $sql = "SELECT achievements.*, student_achievements.sa_date_earned 
@@ -358,6 +413,9 @@ class Task {
         } catch (PDOException $e) { return []; }
     }
 
+    // KOLLA ACHIEVEMENTS (Motorn för badges)
+    // Denna körs varje gång en uppgift lämnas in.
+    // Den kollar om elevens nya XP eller antal uppgifter uppfyller kraven för nya badges.
     public function checkAchievements($studentId, $currentXp) {
         $newBadges = [];
         try {
@@ -367,6 +425,7 @@ class Task {
             $myBadges = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
             // Flöde B. Steg 3.2: Kolla XP-baserade badges (Databasstyrd logik)
+            // Vi hämtar alla badges som kräver mindre eller lika mycket XP som eleven har.
             $stmt = $this->pdo->prepare("SELECT * FROM achievements WHERE a_xp_required <= ? AND a_xp_required < 90000");
             $stmt->execute([$currentXp]);
             $xpBadges = $stmt->fetchAll();
@@ -379,6 +438,10 @@ class Task {
                 }
             }
 
+            // KOD-BASERADE BADGES (Specialregler)
+            // Vissa badges är svåra att definiera bara med SQL-regler, så vi kollar dem med kod här.
+            
+            // Typ-badges (T.ex. "Klara 10 Quiz")
             $typeMapping = [
                 'Quizmästaren' => 1, 'Ordningsvakten' => 2, 'Pusselbiten' => 3, 
                 'Sanningssägaren' => 4, 'Ordgeniet' => 5
@@ -394,6 +457,7 @@ class Task {
                 }
             }
 
+            // Genre-badges (T.ex. "Klara 10 Fantasy-uppgifter")
             $genreMapping = [
                 'Drakryttaren' => 1, 'Astronauten' => 2, 'Detektiven' => 3, 
                 'Spökjägaren' => 4, 'Professorn' => 5
@@ -409,7 +473,7 @@ class Task {
                 }
             }
 
-            // Flöde B. Steg 3.3: Kolla "Grind"-badges (Antal klarade uppgifter)
+            // Flöde B. Steg 3.3: Kolla "Grind"-badges (Antal klarade uppgifter totalt)
             $grindMapping = [
                 'Nyfiken Start' => [1, 5], 'Uppvärmd' => [1, 10], 'På God Väg' => [5, 5],
                 'Erfaren' => [5, 10], 'Eliten' => [10, 5], 'Omöjlig' => [10, 10]
@@ -431,6 +495,8 @@ class Task {
     }
 
     // --- HJÄLPFUNKTIONER FÖR BADGES ---
+    
+    // Delar ut en badge (INSERT i student_achievements)
     private function awardBadge($studentId, $badgeId) {
         $stmt = $this->pdo->prepare("INSERT INTO student_achievements (sa_student_fk, sa_achievement_fk) VALUES (?, ?)");
         $stmt->execute([$studentId, $badgeId]);
@@ -442,6 +508,7 @@ class Task {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    // Kollar om eleven har klarat en viss nivå av en viss typ/genre
     private function hasCompletedTaskAtLevel($studentId, $level, $filterType, $filterId) {
         $sql = "SELECT COUNT(*) FROM student_tasks st
                 JOIN tasks t ON st.st_t_id_fk = t.t_id
@@ -456,6 +523,7 @@ class Task {
         return $stmt->fetchColumn() > 0;
     }
 
+    // Räknar totalt antal klarade uppgifter på en nivå
     private function countCompletedTasksAtLevel($studentId, $level) {
         $sql = "SELECT COUNT(*) FROM student_tasks st
                 JOIN tasks t ON st.st_t_id_fk = t.t_id
@@ -466,7 +534,8 @@ class Task {
         return $stmt->fetchColumn();
     }
 
-    // --- FRAMSTEG FÖR SPECIAL-BADGES ---
+    // --- FRAMSTEG FÖR SPECIAL-BADGES (Visualisering) ---
+    // Denna funktion används av badges.php för att visa "3/10 klarade" på progressbaren.
     public function getSpecialBadgeProgress($studentId) {
         $progressData = [];
 

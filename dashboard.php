@@ -1,7 +1,11 @@
 <?php
 require_once "include/header.php";
 
-// --- SÄKERHETSVAKT ---
+// ---------------------------------------------------------
+// SÄKERHETSVAKT (RBAC - Role Based Access Control)
+// ---------------------------------------------------------
+// Vi börjar alltid med att kontrollera om besökaren är inloggad.
+// Saknas 'user_id' i sessionen? Då kastas man ut till login-sidan direkt.
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
@@ -9,49 +13,81 @@ if (!isset($_SESSION['user_id'])) {
 
 $studentId = $_SESSION['user_id'];
 
-// Hämta XP-progress data
+// ---------------------------------------------------------
+// 1. GAMIFICATION-DATA (Visualisering)
+// ---------------------------------------------------------
+// Vi behöver data för att rita XP-stapeln (Level Progress) högst upp på sidan.
+// getLevelProgress() räknar ut hur många procent av nuvarande nivå som är avklarad.
 $xpProgress = $user_obj->getLevelProgress($_SESSION['user_xp']);
 
-// --- UPPDATERA DATA & KOLLA BADGES ---
+// --- DATASYNKRONISERING ---
+// För att vara säkra på att vi visar helt färsk data (om t.ex. läraren rättat något nyss),
+// hämtar vi elevens XP och Level direkt från databasen istället för att lita blint på sessionen.
 $stmt = $pdo->prepare("SELECT u_xp, u_level FROM users WHERE u_id = ?");
 $stmt->execute([$studentId]);
 $freshUser = $stmt->fetch();
 
 if ($freshUser) {
+    // Uppdatera sessionen med de nya värdena
     $_SESSION['user_xp'] = $freshUser['u_xp'];
     $_SESSION['user_level'] = $freshUser['u_level'];
+    
+    // Kör en kontroll om den nya XP:n berättigar till några nya Badges (Gamification-motor)
     $task_obj->checkAchievements($studentId, $_SESSION['user_xp']);
 }
 
-// --- FILTERLOGIK ---
+// ---------------------------------------------------------
+// 2. NAVIGERING & FILTER (Controller-logik)
+// ---------------------------------------------------------
+// Här läser vi av URL:en för att se om användaren klickat på något filter.
+// T.ex. dashboard.php?type=2 (för "Sortering") eller ?genre=1 (för "Fantasy").
+// Vi använder (int) för att tvinga värdet till en siffra (säkerhet).
+
 $filterTypeId = isset($_GET['type']) && $_GET['type'] !== '' ? (int)$_GET['type'] : null;
 $filterGenreId = isset($_GET['genre']) && $_GET['genre'] !== '' ? (int)$_GET['genre'] : null;
 $viewAllLevels = isset($_GET['view']) && $_GET['view'] === 'all';
 
+// En flagga som avgör om vi är i "Filter-läge" eller "Standard-läge"
 $hasActiveFilter = ($filterTypeId !== null || $filterGenreId !== null || $viewAllLevels);
 
+// Hämta listor på alla Typer och Genrer för att kunna rita ut filter-knapparna
 $allTypes = $task_obj->getAllTypes();
 $allGenres = $task_obj->getAllGenres();
 
 $allTasks = [];
 $sectionTitle = ""; 
 
+// ---------------------------------------------------------
+// 3. HÄMTA UPPGIFTER (Modell-anrop)
+// ---------------------------------------------------------
+
 if ($hasActiveFilter) {
+    // FALL A: Användaren söker/filtrerar.
+    // Då hämtar vi ALLA uppgifter som matchar filtret, oavsett nivå.
     $allTasks = $task_obj->getTasksForStudent($studentId, $filterTypeId, $filterGenreId);
     $sectionTitle = "Sökresultat";
 } else {
+    // FALL B: Standardvyn (Rekommendationer).
+    // Här använder vi den smarta funktionen getRecentAndNextTasks().
+    // Den returnerar en mix av:
+    // 1. "Förbättra" (Senast klarade)
+    // 2. "Fortsätt äventyret" (Nästa upplåsta nivå)
+    // 3. "Nytt äventyr" (Nivå 1-uppgifter man inte börjat på)
     $allTasks = $task_obj->getRecentAndNextTasks($studentId, 8);
     
     if (count($allTasks) > 0) {
         $sectionTitle = "Fortsätt spela & Rekommenderat";
     } else {
+        // Fallback för helt nya elever: Visa allt så de kommer igång.
         $allTasks = $task_obj->getTasksForStudent($studentId); 
         $sectionTitle = "Börja ditt äventyr här!";
     }
 }
 
+// Hämta elevens badges för att visa i miniprofilen
 $myBadges = $task_obj->getStudentBadges($studentId);
 
+// Hjälpfunktion för att skapa länkar som behåller nuvarande filter
 function buildUrl($params) {
     return 'dashboard.php?' . http_build_query(array_merge($_GET, $params));
 }
@@ -110,15 +146,16 @@ function buildUrl($params) {
                     <?php if (!empty($myBadges)): ?>
                         <div class="d-flex flex-wrap justify-content-center justify-content-lg-end gap-1">
                             <?php 
+                            // Visa bara de 4 senaste
                             $displayBadges = array_slice($myBadges, 0, 4); 
                             foreach ($displayBadges as $badge): 
                             ?>
-                                <div class="mini-badge" role="button" tabindex="0" data-bs-toggle="popover" data-bs-trigger="focus" data-bs-placement="bottom" title="<?= htmlspecialchars($badge['a_name']) ?>" data-bs-content="<?= htmlspecialchars($badge['a_description']) ?>">
+                                <div class="mini-badge" role="button" tabindex="0" data-bs-toggle="popover" title="<?= htmlspecialchars($badge['a_name']) ?>" data-bs-content="<?= htmlspecialchars($badge['a_description']) ?>">
                                     <i class="bi <?= htmlspecialchars($badge['a_icon']) ?> fs-5 text-warning"></i>
                                 </div>
                             <?php endforeach; ?>
                             <?php if(count($myBadges) > 4): ?>
-                                <a href="badges.php" class="mini-badge text-decoration-none bg-dark border-secondary" title="Visa alla..." data-bs-toggle="tooltip">
+                                <a href="badges.php" class="mini-badge text-decoration-none bg-dark border-secondary">
                                     <span class="text-white small">+<?= count($myBadges) - 4 ?></span>
                                 </a>
                             <?php endif; ?>
@@ -134,6 +171,7 @@ function buildUrl($params) {
 
     <div class="filter-section pt-3 pb-3 mb-4">
         <div class="row align-items-center mb-2">
+            
             <div class="col-6 col-md-3 order-2 order-md-1 text-md-start text-center mt-2 mt-md-0">
                 <?php if ($viewAllLevels): ?>
                     <a href="<?= buildUrl(['view' => 'focus']) ?>" class="btn btn-filter btn-sm" style="border-color: #fff; min-width: 100px;">
@@ -141,10 +179,11 @@ function buildUrl($params) {
                     </a>
                 <?php else: ?>
                     <a href="dashboard.php?view=all" class="btn btn-filter btn-sm btn-filter-active" style="min-width: 100px;">
-    <i class="bi bi-eye"></i> Visa allt!
-</a>
+                        <i class="bi bi-eye"></i> Visa allt!
+                    </a>
                 <?php endif; ?>
             </div>
+            
             <div class="col-12 col-md-6 order-1 order-md-2 text-center">
                 <h3 class="m-0" style="color: var(--accent-gold); font-family: 'Cinzel Decorative', serif; text-shadow: 2px 2px 2px #000; font-size: 1.8rem;">
                     Välj din väg!
@@ -153,6 +192,7 @@ function buildUrl($params) {
                     Klicka på knappar nedan för att filtrera.
                 </div>
             </div>
+            
             <div class="col-6 col-md-3 order-3 order-md-3 text-md-end text-center mt-2 mt-md-0">
                 <a href="dashboard.php" class="btn btn-filter btn-sm <?php echo (!$hasActiveFilter && !$viewAllLevels) ? 'btn-filter-active' : ''; ?>" style="min-width: 100px;">
                     <i class="bi bi-x-circle"></i> Rensa
@@ -160,6 +200,7 @@ function buildUrl($params) {
             </div>
         </div>
         <hr class="border-secondary mb-3 mt-1">
+        
         <div class="row">
             <div class="col-md-6 mb-2 border-end-md border-secondary">
                 <div class="d-flex align-items-center mb-2 justify-content-center justify-content-md-start">
@@ -201,20 +242,29 @@ function buildUrl($params) {
 
         <?php if (count($allTasks) > 0): ?>
             <?php 
+            // Loopa igenom varje uppgift som ska visas
             foreach ($allTasks as $task): 
-                // Filterlogik (behövs för "sökresultat"-vyn där vi inte har färdiga data i $allTasks på samma sätt)
+                
+                // ---------------------------------------------------------
+                // LOGIK: LÅSNING & STATUS
+                // ---------------------------------------------------------
+                // Här avgör vi om kortet ska se "låst" ut (grått) eller öppet.
+                
                 if ($hasActiveFilter) {
+                    // Vid filtrering räknar vi ut låsningen "live" baserat på max-nivå.
                     $currentGenreId = $filterGenreId ?? $task['t_genre_fk'];
                     $unlockedLevelForThisType = $task_obj->getUnlockedLevel($_SESSION['user_id'], $task['t_type_fk'], $currentGenreId);
+                    
                     $isLocked = ($task['tl_level'] > $unlockedLevelForThisType);
                     $isCompleted = ($task['st_completed'] == 1);
                 } else {
-                    // På startsidan är datan redan filtrerad och klar från getRecentAndNextTasks
-                    $isLocked = false; // De vi hämtar är "nästa" eller "klara", så de är upplåsta
+                    // På startsidan (Rekommendationer) har SQL redan filtrerat bort låsta uppgifter.
+                    $isLocked = false; 
                     $isCompleted = ($task['st_completed'] == 1);
                 }
             ?>
             <div class="col-md-6 col-lg-3 mb-3">
+                
                 <div class="card shadow-sm h-100 <?php echo ($isCompleted) ? 'border-success' : 'border-0'; ?>"
                      style="<?php echo $isLocked ? 'opacity: 0.7; filter: grayscale(100%);' : ''; ?>">
                     
@@ -223,11 +273,13 @@ function buildUrl($params) {
                             <span class="badge bg-primary badge-info-pill small-pill"><?= htmlspecialchars($task['level_name']) ?></span>
                             <span class="badge bg-secondary badge-info-pill small-pill"><?= htmlspecialchars($task['type_name']) ?></span>
                         </div>
+                        
                         <?php if (!empty($task['genre_name'])): ?>
                         <div class="text-center mb-1">
                             <span class="badge bg-light text-dark border small"><?= htmlspecialchars($task['genre_name']) ?></span>
                         </div>
                         <?php endif; ?>
+                        
                         <?php if ($isCompleted): ?>
                             <span class="badge bg-success badge-result py-1"><i class="bi bi-check-lg"></i> KLARAD <span class="percent ms-1"><?= $task['st_score'] ?>%</span></span>
                         <?php elseif (isset($task['st_score']) && $task['st_score'] !== null): ?>
@@ -251,6 +303,7 @@ function buildUrl($params) {
                             <?php else: ?>
                                 
                                 <?php 
+                                    // Logik för knappens text och färg
                                     $btnText = "Starta";
                                     $btnClass = "btn-outline-primary";
                                     $btnIcon = "bi-arrow-right";
@@ -259,14 +312,13 @@ function buildUrl($params) {
                                         $btnText = "Förbättra";
                                         $btnClass = "btn-outline-success";
                                     } elseif (isset($task['sort_priority']) && $task['sort_priority'] == 2) {
-                                        // Priority 2 = Nästa logiska steg i äventyret
+                                        // Priority 2 = Detta är nästa logiska steg i äventyret!
                                         $btnText = "Fortsätt äventyret";
                                         $btnClass = "btn-primary fw-bold"; // Solid färg för att sticka ut
                                         $btnIcon = "bi-play-circle-fill";
                                     }
                                 ?>
 
-                                <!-- Flöde D. Steg 1-->
                                 <a href="task_view.php?id=<?= $task['t_id'] ?>" class="btn btn-sm <?= $btnClass ?>">
                                     <?= $btnText ?> <i class="bi <?= $btnIcon ?>"></i>
                                 </a>

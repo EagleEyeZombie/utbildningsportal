@@ -1,5 +1,12 @@
 <?php
 require_once "include/header.php";
+
+// ---------------------------------------------------------
+// SIDA FÖR ÅTKOMST NEKAD (HTTP 403 Forbidden)
+// ---------------------------------------------------------
+// Denna sida visas när en användare försöker nå en resurs de inte har behörighet till.
+// Exempel: En elev (Level 1) försöker gå till admin_dashboard.php (Kräver Level 5).
+// Säkerhetsmekanismen (RBAC) i de andra filerna omdirigerar hit via header("Location: 403.php").
 ?>
 
 <div class="container d-flex align-items-center justify-content-center" style="min-height: 70vh;">
@@ -19,9 +26,11 @@ require_once "include/header.php";
         <hr class="border-secondary mb-4">
         
         <div class="d-grid gap-3 d-sm-flex justify-content-center">
+            
             <a href="dashboard.php" class="btn btn-primary btn-lg px-4">
                 <i class="bi bi-house-door-fill"></i> Tillbaka till säkerhet
             </a>
+
             <?php if(!isset($_SESSION['user_id'])): ?>
                 <a href="login.php" class="btn btn-outline-light btn-lg px-4">
                     Logga in

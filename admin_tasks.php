@@ -1,44 +1,74 @@
 <?php
 require_once "include/header.php";
 
-// --- SÄKERHETSVAKT ---
+// ---------------------------------------------------------
+// SÄKERHETSVAKT (RBAC - Role Based Access Control)
+// ---------------------------------------------------------
+// Flöde C: Behörighetskontroll
+// 1. Är man inloggad?
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
 
+// 2. Har man rättigheter?
+// Vi kräver nivå 5 (Lärare) eller högre. Elever (nivå 1) ska inte se detta.
 if ($_SESSION['role_level'] < 5) {
     header("Location: 403.php");
     exit;
 }
 
 // HÄR LÄGGER VI TILL DEN SAKNADE VARIABELN:
+// Vi behöver veta vem som är inloggad för att kunna markera "Mina uppgifter" i listan.
 $currentUserId = $_SESSION['user_id'];
 
+// ---------------------------------------------------------
+// 1. HANTERA INPUT & TILLSTÅND (CONTROLLER)
+// ---------------------------------------------------------
 // HÄMTA PARAMETRAR FRÅN URL
+// Här läser vi av sidans "state". Användaren styr detta via filter-menyn.
+// Vi använder ternära operatorer för att sätta default-värden om inget valts.
+
 // ÄNDRAT: Tog bort (int) för teacher så vi kan ta emot 'missing'
 $filterTeacher = (isset($_GET['teacher']) && $_GET['teacher'] !== 'all') ? $_GET['teacher'] : null;
+
+// SÄKERHET (Sanitering):
+// Vi tvingar ID:n till (int) för att förhindra att någon skriver skräp eller SQL i URL:en.
 $filterType = (isset($_GET['type']) && $_GET['type'] !== 'all') ? (int)$_GET['type'] : null;
 $filterLevel = (isset($_GET['level']) && $_GET['level'] !== 'all') ? (int)$_GET['level'] : null;
 $filterGenre = (isset($_GET['genre']) && $_GET['genre'] !== 'all') ? (int)$_GET['genre'] : null;
 
+// PAGINERING (Sidbläddring)
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20; 
+
+// SORTERING
+// cleanInput() skyddar oss mot XSS om någon försöker injicera script i 'sort'-parametern.
 $sortCol = isset($_GET['sort']) ? cleanInput($_GET['sort']) : 't_created'; // Default: Skapad
 $sortDir = isset($_GET['dir']) ? cleanInput($_GET['dir']) : 'DESC'; // Default: Nyast först
 
+// Säkerställ att limit är ett tillåtet värde (förhindra manipulation)
 if (!in_array($limit, [20, 40, 80])) $limit = 20;
+
+// Räkna ut startpositionen för SQL-frågan (OFFSET)
+// Sida 1: (1-1)*20 = 0. Sida 2: (2-1)*20 = 20.
 $offset = ($page - 1) * $limit;
 
-// 2. HÄMTA DATA
+// ---------------------------------------------------------
+// 2. HÄMTA DATA (MODELL)
+// ---------------------------------------------------------
+// Vi hämtar först all metadata vi behöver för att rita ut filter-dropdowns.
 $allTypes = $task_obj->getAllTypes();
 $allLevels = $task_obj->getAllLevels();
 $allGenres = $task_obj->getAllGenres();
+
+// Tidigare kod för lärare (ersatt nedan, men kvar i filen enligt instruktion)
 $stmt = $pdo->query("SELECT u_id, u_name FROM users WHERE u_role_fk >= 5 ORDER BY u_name");
 $allTeachers = $stmt->fetchAll();
 
-// Hämta alla lärare (för att kunna byta ägare)
+// Hämta alla lärare (för att kunna byta ägare/filtrera)
 // FIX: Vi måste joina med roles för att kolla nivån (r_level), inte ID:t
+// Detta säkerställer att vi bara ser användare som faktiskt är lärare/admins.
 $stmt = $pdo->query("SELECT users.u_id, users.u_name 
                      FROM users 
                      JOIN roles ON users.u_role_fk = roles.r_id 
@@ -46,16 +76,28 @@ $stmt = $pdo->query("SELECT users.u_id, users.u_name
                      ORDER BY users.u_name ASC");
 $allTeachers = $stmt->fetchAll();
 
+// HÄMTA FILTERADE UPPGIFTER
+// Detta är kärnan i "Read"-funktionen. Vi skickar in alla våra filter till modellen.
+// Prepared Statements används inne i denna funktion (se class_task.php) för säkerhet.
 $allTasks = $task_obj->getTasksFiltered($filterTeacher, $filterType, $filterLevel, null, $filterGenre, $sortCol, $sortDir, $limit, $offset);
+
+// Räkna totalt antal träffar (för att veta hur många sidor vi fick)
 $totalTasks = $task_obj->getTasksCountFiltered($filterTeacher, $filterType, $filterLevel, null, $filterGenre);
 $totalPages = ceil($totalTasks / $limit);
 
+// HJÄLPFUNKTION FÖR SORTERINGSLÄNKAR
+// Denna funktion bygger URL:er dynamiskt.
+// Den ser till att vi inte tappar bort filtervalen när vi klickar på "Sortera".
+// DRY (Don't Repeat Yourself).
 function sortLink($displayText, $dbCol, $currentCol, $currentDir, $teacher, $type, $level, $genre, $limit) {
+    // Om vi redan sorterar på denna kolumn, byt riktning (ASC <-> DESC)
     $newDir = ($dbCol === $currentCol && $currentDir === 'ASC') ? 'DESC' : 'ASC';
     $icon = '';
+    // Visa pil-ikon
     if ($dbCol === $currentCol) {
         $icon = ($currentDir === 'ASC') ? ' <i class="bi bi-caret-up-fill"></i>' : ' <i class="bi bi-caret-down-fill"></i>';
     }
+    // Bygg URL med alla nuvarande parametrar
     $url = "?sort=$dbCol&dir=$newDir&page=1&limit=$limit";
     if ($teacher) $url .= "&teacher=$teacher";
     if ($type) $url .= "&type=$type";
@@ -209,6 +251,7 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $teacher, $typ
                                         <a href="admin_edit_task.php?id=<?= $task['t_id'] ?>" class="btn btn-sm btn-primary me-1">
                                             Redigera
                                         </a>
+                                        
                                         <form action="delete_task.php" method="POST" class="d-inline" onsubmit="return confirm('Är du säker? All statistik för denna uppgift kommer också försvinna.');">
                                             <?= csrfInput() ?>
                                             <input type="hidden" name="id" value="<?= $task['t_id'] ?>">
@@ -228,6 +271,7 @@ function sortLink($displayText, $dbCol, $currentCol, $currentDir, $teacher, $typ
                     <nav>
                         <ul class="pagination mb-0 flex-wrap justify-content-center gap-1">
                             <?php 
+                                // Bygg bas-URL för länkarna så vi inte tappar filter
                                 $baseUrl = "?sort=$sortCol&dir=$sortDir&limit=$limit";
                                 if ($filterTeacher) $baseUrl .= "&teacher=$filterTeacher";
                                 if ($filterType) $baseUrl .= "&type=$filterType";

@@ -1,28 +1,41 @@
 <?php
 require_once "include/header.php";
 
+// ---------------------------------------------------------
+// SÄKERHET & BEHÖRIGHET (RBAC - Role Based Access Control)
+// ---------------------------------------------------------
+
 // --- SÄKERHETSVAKT ---
 if (!isset($_SESSION['user_id'])) {
     // Inte inloggad alls -> Gå till Login
+    // Detta skyddar sidan från obehöriga besökare.
     header("Location: login.php");
-    exit;
+    exit; // VIKTIGT: Stoppar skriptet så ingen kod nedanför körs.
 }
 
 if ($_SESSION['role_level'] < 5) {
     // Inloggad men fel behörighet (t.ex. Elev försöker nå Admin) -> Gå till 403
+    // Vi kollar roll-nivån som sparades i sessionen vid inloggning.
+    // Nivå 5 är gränsen för lärare/admin.
     header("Location: 403.php");
     exit;
 }
 
-// 1. Hämta data för dropdowns
+// ---------------------------------------------------------
+// 1. FÖRBEREDELSE: HÄMTA DATA FÖR UI (DROPDOWNS)
+// Innan vi visar formuläret måste vi hämta alternativen för
+// Roller, XP-takt och Klasser från databasen.
+// ---------------------------------------------------------
 try {
+    // Hämta alla roller (Elev, Lärare, Admin)
     $roleStmt = $pdo->query("SELECT * FROM roles ORDER BY r_level ASC");
     $allRoles = $roleStmt->fetchAll();
 
+    // Hämta hastigheter (Normal, Snabb, Långsam)
     $speedStmt = $pdo->query("SELECT * FROM progress_speeds ORDER BY ps_id ASC");
     $allProgressSpeeds = $speedStmt->fetchAll();
 
-    // Hämta klasser via school_obj
+    // Hämta klasser via school_obj (Dependency Injection i praktiken)
     $allClasses = $school_obj->getAllClasses();
 
 } catch (PDOException $e) {
@@ -32,53 +45,83 @@ try {
 $errorMsg = "";
 $successMsg = "";
 
+// ---------------------------------------------------------
+// FLÖDE A. STEG 2 & 3: MOTTAGNING OCH LOGIK (CONTROLLER)
+// Detta block körs BARA när användaren klickar på "Skapa Användare".
+// ---------------------------------------------------------
+
 // 2. Hantera formulär
-// Flöde A. Steg 2.1
+// Flöde A. Steg 2.1: Mottagning av POST-paket
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['register-submit'])) {
     
-// Kontrollera om token finns, annars använd tom sträng för att undvika felmeddelande
+    // --- SÄKERHET: CSRF-KONTROLL ---
+    // Kontrollera om token finns, annars använd tom sträng för att undvika felmeddelande
     $token = isset($_POST['csrf_token']) ? $_POST['csrf_token'] : '';
     
+    // verifyCsrfToken() jämför den inskickade koden med den som finns i Sessionen.
+    // Matchar de inte? Då är det en falsk förfrågan (hackförsök).
     if (!verifyCsrfToken($token)) {
         die("Ogiltig CSRF-token. Försök ladda om sidan.");
     }
 
-    // Flöde A. Steg 2.2
-    // Flöde A. Steg 3.1
+    // Flöde A. Steg 2.2: Mottagning
+    // Här hämtar vi datan från $_POST-arrayen.
+
+    // Flöde A. Steg 3.1: Sanitering (Tvättning)
+    // cleanInput() tar bort HTML-taggar och skadlig kod (XSS-skydd).
+    // Notera: Vi tvättar INTE lösenordet här, eftersom specialtecken kan vara giltiga där.
     $uname = cleanInput($_POST['uname']);
     $ufname = cleanInput($_POST['ufname']);
     $ulname = cleanInput($_POST['ulname']);
     $umail = cleanInput($_POST['umail']);
-    $upass = $_POST['upass'];
-    $upassrpt = $_POST['upassrpt'];
+    $upass = $_POST['upass'];       // Rådata (ska hashas senare)
+    $upassrpt = $_POST['upassrpt']; // Rådata
     $urole = cleanInput($_POST['urole']);
     
-    // Hämta XP-hastighet (Standard: 1)
+    // Hämta XP-hastighet (Standard: 1 om inget valts)
     $uspeed = isset($_POST['uspeed']) ? cleanInput($_POST['uspeed']) : 1;
     
-    // Hämta Klass (Kan vara tom)
+    // Hämta Klass (Kan vara tom/null om eleven inte har en klass än)
     $uclass = !empty($_POST['uclass']) ? cleanInput($_POST['uclass']) : null;
 
-    // Flöde A. Steg 3.2
+    // Flöde A. Steg 3.2: Validering (Affärslogik)
+    // Vi skickar datan till User-objektet för att kontrollera reglerna:
+    // 1. Är e-posten giltig?
+    // 2. Matchar lösenorden?
+    // 3. Är lösenordet starkt nog?
+    // 4. Finns användarnamnet redan? (Unikhet)
     $checkResult = $user_obj->checkUserRegisterInfo($uname, $umail, $upass, $upassrpt, "create");
 
     if (!$checkResult['success']) {
+        // Valideringen misslyckades -> Visa felmeddelande
         $errorMsg = $checkResult['error'];
     } else {
         // Skicka med både hastighet och klass till create-funktionen
+        
+        // ---------------------------------------------------------
+        // FLÖDE A. STEG 4: ANROPA MODELLEN (SPARA I DB)
+        // Valideringen gick igenom. Nu ber vi modellen skapa användaren.
+        // Här sker Hashing av lösenord och SQL INSERT.
+        // ---------------------------------------------------------
         
         // Flöde A. Steg 4 Om valideringen går igenom (returnerar true), anropas createUser. Här sker magin med lösenordet.
         $createResult = $user_obj->createUser($uname, $ufname, $ulname, $umail, $upass, $urole, $uspeed, $uclass);
 
         if ($createResult['success']) {
+            // Allt gick bra! Ge feedback till admin.
             $successMsg = "Användaren <strong>$uname</strong> har skapats!";
         } else {
+            // Databasfel (t.ex. kopplingen bröts)
             $errorMsg = $createResult['error'];
         }
     }
 }
 
-// 3. Hämta de 20 senaste användarna (för listan i botten)
+// ---------------------------------------------------------
+// 3. EFTERARBETE: UPPDATERA LISTOR
+// ---------------------------------------------------------
+// Hämta de 20 senaste användarna (för listan i botten).
+// Detta gör vi EFTER formulärhanteringen så att den nya användaren syns direkt.
 $recentUsers = $user_obj->getRecentUsers(20);
 
 ?>
@@ -101,12 +144,10 @@ $recentUsers = $user_obj->getRecentUsers(20);
                         <div class="alert alert-success"><?= $successMsg ?></div>
                     <?php endif; ?>
 
-                    <!-- Flöde A. Steg 1.2-->
-
                     <form action="register.php" method="POST">
+                        
                         <?php echo csrfInput(); ?>
 
-                        <!-- Flöde A. Steg 1.1-->
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="ufname" class="form-label">Förnamn</label>
@@ -202,6 +243,7 @@ $recentUsers = $user_obj->getRecentUsers(20);
                             <tbody>
                                 <?php foreach ($recentUsers as $user): ?>
                                     <?php 
+                                        // Visuell logik: Sätt färg på badgen beroende på roll
                                         $roleClass = 'bg-secondary'; 
                                         switch($user['r_name']) {
                                             case 'Admin': $roleClass = 'bg-danger border border-danger-subtle'; break;

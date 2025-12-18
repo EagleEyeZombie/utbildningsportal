@@ -2,16 +2,25 @@
 require_once "include/header.php";
 
 // --- SÄKERHETSVAKT ---
+// Kontrollera att användaren är inloggad. Detta skyddar sidan från obehöriga gäster.
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
 
-// // Flöde D. Steg 2.1: Hämta ID från URL
-$taskId = isset($_GET['id']) ? $_GET['id'] : 0;
-$task = $task_obj->getTaskById($taskId);
-// ... (Om ingen uppgift hittas, kasta ut användaren) ...
+// ---------------------------------------------------------
+// FLÖDE D. STEG 2: MOTTAGNING & DATAHÄMTNING (CONTROLLER)
+// ---------------------------------------------------------
 
+// Flöde D. Steg 2.1: Hämta ID från URL
+// Här fångar vi upp vilken uppgift användaren vill se via GET-parametern i URL:en.
+// Exempel: task_view.php?id=5
+$taskId = isset($_GET['id']) ? $_GET['id'] : 0;
+
+// Vi hämtar uppgiften från databasen via vår klass.
+$task = $task_obj->getTaskById($taskId);
+
+// Om ingen uppgift hittas (t.ex. felaktigt ID), skicka tillbaka användaren till dashboard.
 if (!$task) {
     header("Location: dashboard.php");
     exit;
@@ -19,14 +28,28 @@ if (!$task) {
 
 // --- SÄKERHET: KOLLA OM LÅST ---
 // Flöde D. Steg 2.2: SÄKERHET - Är uppgiften låst?
+// Vi litar inte bara på att länken var synlig på Dashboarden.
+// Vi gör en dubbelkoll här på server-sidan (Backend) för att se om användaren har nått rätt nivå.
+// getUnlockedLevel() räknar ut vilken nivå användaren är på i just denna genre/typ.
 $unlockedLevel = $task_obj->getUnlockedLevel($_SESSION['user_id'], $task['t_type_fk'], $task['t_genre_fk']);
+
+// Om uppgiftens nivå är högre än vad användaren låst upp, spärrar vi åtkomsten.
 $isLocked = ($task['tl_level'] > $unlockedLevel);
 
+// ---------------------------------------------------------
+// FLÖDE D. STEG 3: DATAHANTERING (JSON)
+// ---------------------------------------------------------
+
 // Flöde D. Steg 3: Avkoda JSON-data
+// Uppgifternas innehåll (frågor, svarsalternativ, ordlistor) ligger lagrade som JSON-text i databasen.
+// json_decode($..., true) omvandlar denna text till en hanterbar PHP-array (associativ array).
+// Detta gör systemet flexibelt: Vi kan ha helt olika datastrukturer för olika uppgiftstyper i samma tabell.
 $questions = json_decode($task['t_questions'], true);
 $taskTypeName = strtolower($task['type_name']); 
 
-// Räkna steg
+// Räkna steg för progressbaren
+// Vissa uppgifter (Sortering/Para ihop) har allt på en sida (= 2 steg: Start + Uppgift).
+// Andra (Quiz) har en fråga per sida.
 $totalSteps = count($questions) + 1;
 if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para ihop') !== false || strpos($taskTypeName, 'textluckor') !== false) {
     $totalSteps = 2; // Dessa typer har bara en "sida" med uppgifter
@@ -37,7 +60,11 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
     <div class="row justify-content-center">
         <div class="col-md-8">
             
-            <?php if ($isLocked): ?>
+            <?php 
+            // ---------------------------------------------------------
+            // VY: HANTERA LÅST TILLSTÅND
+            // ---------------------------------------------------------
+            if ($isLocked): ?>
                 <div class="card shadow-lg text-center border-secondary" style="border-width: 3px; background-color: #f8d7da;">
                     <div class="card-body p-5 rounded">
                         <i class="bi bi-lock-fill display-1 text-secondary mb-4"></i>
@@ -54,6 +81,7 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
 
                 <form action="task_submit.php" method="POST" id="quizForm">
                     <input type="hidden" name="task_id" value="<?= $task['t_id'] ?>">
+                    
                     <?= csrfInput() ?>
 
                     <div class="step-card" id="step-0">
@@ -75,20 +103,25 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
                     <?php 
                     $qCount = 0;
 
-                    // Flöde D. Steg 4: Dynamisk Rendering (Välj rätt gränssnitt)
+                    // ---------------------------------------------------------
+                    // FLÖDE D. STEG 4: DYNAMISK RENDERING (VIEW)
+                    // Här avgör vi hur HTML-koden ska se ut baserat på uppgiftstyp.
+                    // ---------------------------------------------------------
 
                     // Flöde D. Steg 4.A. Fall A: Textluckor (Drag & Drop)
                     // === TEXTLUCKOR ===
                     if (strpos($taskTypeName, 'textluckor') !== false) {
-                        // ... renderar lucktext-gränssnittet ...
+                        // Logik: Vi behöver skapa en "Ordbank" med både rätt ord och distraktorer (felaktiga ord).
                         $qCount++;
                         $gaps = $questions['gaps'];
                         $distractors = isset($questions['distractors']) ? $questions['distractors'] : [];
                         
+                        // Slå ihop rätta ord och felaktiga ord
                         $wordBank = $distractors;
                         foreach ($gaps as $g) {
                             $wordBank[] = $g['word'];
                         }
+                        // Blanda orden så eleven inte kan gissa baserat på ordning
                         shuffle($wordBank);
                         ?>
                         <div class="step-card d-none" id="step-<?= $qCount ?>">
@@ -116,6 +149,7 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
                                             <div class="list-group-item p-3 mb-2 border-0">
                                                 <p class="lead mb-2">
                                                     <?php 
+                                                    // Vi delar meningen vid '___' för att infoga drop-zonen
                                                     $parts = explode('___', $gap['sentence']);
                                                     echo htmlspecialchars($parts[0]);
                                                     ?>
@@ -141,10 +175,12 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
                     
                     
                     // === PARA IHOP ===
+                    // Här ska eleven koppla ihop en term (vänster) med en beskrivning (höger).
                     elseif (strpos($taskTypeName, 'para ihop') !== false) {
                         
                         $qCount++;
                         $pairs = $questions; 
+                        // Vi blandar termerna på vänster sida, men behåller definitionerna i ordning på höger.
                         $shuffledTerms = $pairs;
                         shuffle($shuffledTerms);
                         ?>
@@ -188,14 +224,14 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
                         <?php
                     }
 
-                    // Flöde D. Steg4.B. Fall B: Sortering
+                    // Flöde D. Steg 4.B. Fall B: Sortering
                     // === SORTERING ===
                     elseif (strpos($taskTypeName, 'sortering') !== false) {
-                        // ... renderar sorterings-listan ...
+                        // Renderar en lista som kan sorteras med Drag & Drop.
                         $qCount++;
                         $correctOrder = $questions['s']; 
                         $shuffledOrder = $correctOrder; 
-                        shuffle($shuffledOrder); 
+                        shuffle($shuffledOrder); // Blanda ordningen för eleven
                         ?>
                         <div class="step-card d-none" id="step-<?= $qCount ?>">
                             <div class="card shadow border-0">
@@ -223,6 +259,7 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
                     } 
                     
                     // === FLERVAL / SANT-FALSKT ===
+                    // Detta är standardvyn för quiz-liknande frågor.
                     else {
                         foreach ($questions as $index => $q): 
                             $qCount++;
@@ -232,19 +269,24 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
                                     <div class="card-header bg-primary text-white py-3"><h4 class="m-0">Fråga <?= $qCount ?> av <?= count($questions) ?></h4></div>
                                     <div class="card-body p-4">
                                         <?php $questionText = isset($q['q']) ? $q['q'] : (isset($q['statement']) ? $q['statement'] : 'Fråga saknas'); ?>
+                                        
                                         <?php if (strpos($taskTypeName, 'flerval') !== false): ?>
                                             <h5 class="mb-4"><?= htmlspecialchars($questionText) ?></h5>
                                             <div class="list-group mb-4">
                                                 <?php
+                                                // Skapa en array med alla alternativ (rätt + fel)
                                                 $options = [];
-                                                $options[] = ['text' => $q['a'], 'value' => $q['a']];
-                                                if (!empty($q['w1'])) $options[] = ['text' => $q['w1'], 'value' => $q['w1']];
-                                                if (!empty($q['w2'])) $options[] = ['text' => $q['w2'], 'value' => $q['w2']];
-                                                if (!empty($q['w3'])) $options[] = ['text' => $q['w3'], 'value' => $q['w3']];
-                                                shuffle($options);
+                                                $options[] = ['text' => $q['a'], 'value' => $q['a']]; // Rätt svar
+                                                if (!empty($q['w1'])) $options[] = ['text' => $q['w1'], 'value' => $q['w1']]; // Fel 1
+                                                if (!empty($q['w2'])) $options[] = ['text' => $q['w2'], 'value' => $q['w2']]; // Fel 2
+                                                if (!empty($q['w3'])) $options[] = ['text' => $q['w3'], 'value' => $q['w3']]; // Fel 3
+                                                shuffle($options); // Blanda så att "A" inte alltid är rätt
                                                 ?>
                                                 <?php foreach ($options as $opt): ?>
-                                                    <label class="list-group-item list-group-item-action p-3 border rounded mb-2"><input class="form-check-input me-2" type="radio" name="answers[<?= $qCount ?>]" value="<?= htmlspecialchars($opt['value']) ?>" required onclick="enableNextBtn(<?= $qCount ?>)"><span><?= htmlspecialchars($opt['text']) ?></span></label>
+                                                    <label class="list-group-item list-group-item-action p-3 border rounded mb-2">
+                                                        <input class="form-check-input me-2" type="radio" name="answers[<?= $qCount ?>]" value="<?= htmlspecialchars($opt['value']) ?>" required onclick="enableNextBtn(<?= $qCount ?>)">
+                                                        <span><?= htmlspecialchars($opt['text']) ?></span>
+                                                    </label>
                                                 <?php endforeach; ?>
                                             </div>
                                         <?php elseif (strpos($taskTypeName, 'sant/falskt') !== false): ?>
@@ -278,6 +320,7 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
                     const totalSteps = <?= $totalSteps ?>; 
                     const taskType = "<?= $taskTypeName ?>";
 
+                    // Uppdaterar progressbaren högst upp
                     function updateProgress() {
                         let percent = 0;
                         if (currentStep > 0) { percent = (currentStep / (totalSteps - 1)) * 100; } 
@@ -294,6 +337,7 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
                         }
                     }
 
+                    // Döljer nuvarande "kort" och visar nästa
                     function nextStep() {
                         document.getElementById('step-' + currentStep).classList.add('d-none');
                         currentStep++;
@@ -308,11 +352,13 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
                         updateProgress();
                     }
 
+                    // Aktiverar "Nästa"-knappen när eleven valt ett svar
                     function enableNextBtn(stepId) {
                         const btn = document.getElementById('btn-next-' + stepId);
                         if(btn) { btn.disabled = false; }
                     }
                     
+                    // Specialhantering för Textluckor (kopiera värden från drag-zone till hidden input)
                     function prepareSubmission() {
                         if (!confirm('Är du säker på att du är klar?')) {
                             return;
@@ -334,6 +380,7 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
 
                     updateProgress();
 
+                    // Initiera SortableJS (Bibliotek för Drag-and-Drop)
                     if (['sortering', 'para ihop'].some(t => taskType.includes(t))) {
                         const list = document.getElementById(taskType.includes('para ihop') ? 'sortable-terms' : 'sortable-list');
                         if(list) {
@@ -342,6 +389,8 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
                                 ghostClass: 'sortable-ghost',
                                 handle: '.handle',
                                 onEnd: function (evt) {
+                                    // När användaren släpper ett element, uppdatera indexen på hidden-inputs
+                                    // så att rätt svar hamnar på rätt plats i PHP-arrayen.
                                     const items = list.querySelectorAll('.sortable-item');
                                     items.forEach((item, index) => {
                                         const input = item.querySelector('input[type="hidden"]');

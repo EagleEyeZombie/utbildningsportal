@@ -1,7 +1,11 @@
 <?php
 require_once "include/header.php";
 
-// --- SÄKERHETSVAKT ---
+// ---------------------------------------------------------
+// SÄKERHETSVAKT (RBAC)
+// ---------------------------------------------------------
+// Vi kollar att användaren är inloggad.
+// Detta är standardskydd för alla sidor som kräver inloggning.
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
@@ -9,13 +13,23 @@ if (!isset($_SESSION['user_id'])) {
 
 $userId = $_SESSION['user_id'];
 
-// 1. Hämta XP
+// ---------------------------------------------------------
+// FLÖDE B. STEG 5: HÄMTA GAMIFICATION-DATA (MODELL)
+// ---------------------------------------------------------
+
+// 1. Hämta XP (För att beräkna framsteg på XP-badges)
+// Vi hämtar färsk XP från databasen för att vara säkra på att progress-baren visar rätt.
 $stmt = $pdo->prepare("SELECT u_xp FROM users WHERE u_id = ?");
 $stmt->execute([$userId]);
 $user = $stmt->fetch();
-$currentXP = $user['u_xp'] ?? 0;
+$currentXP = $user['u_xp'] ?? 0; // Null coalescing operator: Om null, sätt till 0.
 
-// 2. Hämta ALLA achievements
+// 2. Hämta ALLA achievements (SQL JOIN)
+// Här använder vi en LEFT JOIN. Varför?
+// Vi vill visa ALLA märken som finns i systemet (tabellen `achievements`),
+// OCH om eleven har tagit dem (tabellen `student_achievements`).
+// Om eleven INTE har tagit ett märke, blir kolumnerna från `student_achievements` NULL,
+// vilket vi använder för att visa hänglåset.
 $sql = "SELECT a.*, sa.sa_date_earned 
         FROM achievements a 
         LEFT JOIN student_achievements sa 
@@ -26,7 +40,9 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute([$userId]);
 $allBadges = $stmt->fetchAll();
 
-// 3. Hämta framstegsdata för special-badges
+// 3. Hämta framstegsdata för special-badges (Logik)
+// Vissa badges baseras inte på XP, utan på handlingar (t.ex. "Klara 10 Quiz").
+// Denna funktion (i class_task.php) räknar ut exakt hur många man klarat vs målet.
 $specialProgressData = $task_obj->getSpecialBadgeProgress($userId);
 
 ?>
@@ -55,11 +71,17 @@ $specialProgressData = $task_obj->getSpecialBadgeProgress($userId);
 
     <div class="row">
         <?php foreach ($allBadges as $badge): 
+            // ---------------------------------------------------------
+            // LOGIK: PRESENTATION (VYN)
+            // ---------------------------------------------------------
+            
+            // Kolla om vi fick ett datum från LEFT JOINen. Fick vi det, äger vi märket.
             $isUnlocked = !empty($badge['sa_date_earned']);
+            
             $xpReq = $badge['a_xp_required'];
             $badgeName = $badge['a_name'];
             
-            // Är det en special-badge? (Krav över 90000)
+            // Är det en special-badge? (Vi har satt fiktivt höga XP-krav, t.ex. 99999, för dessa i DB)
             $isSpecial = ($xpReq >= 90000);
 
             // Förbered variabler för progress bar
@@ -69,22 +91,27 @@ $specialProgressData = $task_obj->getSpecialBadgeProgress($userId);
             $label = "XP";
 
             if ($isUnlocked) {
+                // Om märket är taget, är progressen alltid 100%
                 $percent = 100;
             } else {
+                // Om märket är låst, måste vi räkna ut hur nära man är.
+                
                 if ($isSpecial) {
-                    // Hämta data från vår nya funktion
+                    // Fall A: Special-badge (t.ex. "Klara 5 Quiz")
+                    // Hämta data från den komplexa uträkningen vi gjorde i toppen ($specialProgressData)
                     if (isset($specialProgressData[$badgeName])) {
                         $data = $specialProgressData[$badgeName];
                         $currentVal = $data['current'];
                         $targetVal = $data['target'];
-                        $label = $data['label'];
+                        $label = $data['label']; // T.ex. "Uppdrag" eller "Nivå"
                         
                         if ($targetVal > 0) {
                             $percent = ($currentVal / $targetVal) * 100;
                         }
                     }
                 } else {
-                    // Vanlig XP-badge
+                    // Fall B: Vanlig XP-badge
+                    // Enkel matte: Nuvarande XP / Krav XP
                     $currentVal = floor($currentXP);
                     $targetVal = $xpReq;
                     $label = "XP";
@@ -93,7 +120,7 @@ $specialProgressData = $task_obj->getSpecialBadgeProgress($userId);
                         $percent = ($currentXP / $xpReq) * 100;
                     }
                 }
-                // Säkra att procenten inte går över 100
+                // Säkra att procenten inte går över 100 (bugg-skydd)
                 if ($percent > 100) $percent = 100;
             }
         ?>
@@ -117,6 +144,7 @@ $specialProgressData = $task_obj->getSpecialBadgeProgress($userId);
                             <div class="alert alert-success py-1 px-2 d-inline-block border-success" style="background: rgba(25, 135, 84, 0.3); font-size: 0.85rem;">
                                 <i class="bi bi-check-circle-fill"></i> Upplåst <?php echo date('Y-m-d', strtotime($badge['sa_date_earned'])); ?>
                             </div>
+                        
                         <?php else: ?>
                             
                             <div class="progress-wrapper mt-3">

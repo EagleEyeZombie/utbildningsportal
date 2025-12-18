@@ -1,10 +1,31 @@
+# ---------------------------------------------------------
+# GIT KONFIGURATION (Versionshantering)
+# ---------------------------------------------------------
+# Denna fil instruerar Git om vilka filer som SKA IGNORERAS.
+# De kommer alltså inte att laddas upp (commit/push) till repot.
+
 # VS Code
+# Vi ignorerar mappen .vscode/ eftersom den innehåller DINA personliga
+# inställningar för editorn. I ett team vill vi inte att dina inställningar
+# ska skriva över kollegans inställningar.
 .vscode/
 
 # Temporary Word files
+# Här blockerar vi tillfälliga filer och "skräp" som skapas av operativsystemet
+# eller program som Word/Draw.io medan man jobbar.
+# Dessa hör inte hemma i källkoden.
 ~$*.docx
 ~$*.doc
 *.tmp
 *.bkp
 *.drawio*
 *.fig
+
+# ---------------------------------------------------------
+# SÄKERHETSNOTERING (Viktigt för seniorer)
+# ---------------------------------------------------------
+# I ett skarpt projekt (produktion) skulle vi även lägga till:
+# config.php
+# .env
+# ...för att förhindra att databaslösenord laddas upp till GitHub av misstag.
+# (I detta skolprojekt har vi dock kvar dem för att det ska vara enkelt att rätta).

@@ -1,34 +1,60 @@
 <?php
+// ---------------------------------------------------------
+// 1. INITIERING & BEROENDEN
+// ---------------------------------------------------------
+// Här laddar vi in alla klasser och konfigurationer som behövs för hela systemet.
+// Eftersom header.php är det första som laddas på varje sida, blir dessa objekt
+// ($user_obj, $task_obj, $pdo) tillgängliga överallt (Global Scope i praktiken för sidan).
+
 require_once "include/class_user.php";
 require_once "include/class_task.php";
 require_once "include/class_school.php";
-require_once "include/config.php";
-require_once "include/functions.php";
+require_once "include/config.php";   // Startar sessionen och databaskopplingen
+require_once "include/functions.php"; // Hjälpfunktioner (XSS/CSRF)
 
-// --- HANTERA TEMABYTE ---
+// ---------------------------------------------------------
+// 2. HANTERA TEMABYTE (POST-anrop)
+// ---------------------------------------------------------
+// Om användaren klickar på ett färgtema i menyn, skickas ett formulär hit.
+// Vi fångar upp det direkt innan HTML skrivs ut.
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['set_theme']) && isset($_SESSION['user_id'])) {
+    
+    // SÄKERHET (CSRF): Kontrollera att anropet kommer från vår egen meny.
     if (verifyCsrfToken($_POST['csrf_token'])) {
         $newTheme = $_POST['set_theme'];
+        
+        // Uppdatera temat i databasen (persistent)
         $user_obj->updateUserTheme($_SESSION['user_id'], $newTheme);
+        
+        // Ladda om sidan för att det nya temat ska synas direkt (PRG - Post Redirect Get)
         header("Location: " . $_SERVER['REQUEST_URI']);
         exit;
     }
 }
 
-// --- LOGIK FÖR SIDTITEL (NYTT) ---
+// ---------------------------------------------------------
+// 3. LOGIK FÖR SIDTITEL & UX
+// ---------------------------------------------------------
+// Vi vill att webbläsarfliken ska visa var vi är (t.ex. "Logga in | KunskapsÄventyret").
+// Vi kollar vilken fil som körs just nu och sätter titeln därefter.
+
 $current_page = basename($_SERVER['PHP_SELF']);
 $site_name = "KunskapsÄventyret";
-$page_title = "Välkommen"; // Standard
+$page_title = "Välkommen"; // Standard om inget matchar
 
 switch ($current_page) {
+    // Publika sidor
     case 'index.php': $page_title = "Start"; break;
     case 'login.php': $page_title = "Logga in"; break;
+    
+    // Elev-sidor (Flöde D)
     case 'dashboard.php': $page_title = "Mina Äventyr"; break;
     case 'task_view.php': $page_title = "Uppdrag"; break;
     case 'task_submit.php': $page_title = "Resultat"; break;
     case 'badges.php': $page_title = "Utmärkelser"; break;
     
-    // Admin
+    // Admin-sidor (Flöde C)
     case 'admin_dashboard.php': $page_title = "Adminpanel"; break;
     case 'user-management.php': $page_title = "Hantera Användare"; break;
     case 'admin_tasks.php': $page_title = "Hantera Uppgifter"; break;
@@ -37,24 +63,34 @@ switch ($current_page) {
     case 'admin_classes.php': $page_title = "Hantera Klasser"; break;
     case 'edit_class.php': $page_title = "Redigera Klass"; break;
     case 'register.php': $page_title = "Lägg till Användare"; break;
+    
+    // Error
     case '403.php': $page_title = "Åtkomst Nekad"; break;
 }
 
-// --- LOGIK FÖR TEMA (BAKGRUND & DESIGN) ---
+// ---------------------------------------------------------
+// 4. LOGIK FÖR TEMA (VISUELLT)
+// ---------------------------------------------------------
+// Vi sätter CSS-klasser på <body> för att styra bakgrund och färger.
+
+// Lista på sidor som ska ha "Spel-känsla" (Bakgrundsbild etc)
 $game_pages = ['dashboard.php', 'task_view.php', 'badges.php']; 
 
-$body_class = 'student-page-background'; 
+$body_class = 'student-page-background'; // Default: Elev-vy
+
+// Om användaren är lärare/admin OCH inte är inne i "spelet", visa en mer neutral bakgrund.
 if (isset($_SESSION['role_level']) && $_SESSION['role_level'] >= 5 && !in_array($current_page, $game_pages)) {
     $body_class = 'admin-mode';
 }
 
-// Hämta tema
-$userTheme = 'fantasy'; 
+// Hämta användarens valda färgtema från sessionen eller databasen
+$userTheme = 'fantasy'; // Default
 if (isset($_SESSION['user_id'])) {
     try {
         if (isset($_SESSION['user_theme'])) {
             $userTheme = $_SESSION['user_theme'];
         } else {
+            // Fallback: Hämta från DB om sessionen tappat det
             $stmt = $pdo->prepare("SELECT u_theme FROM users WHERE u_id = ?");
             $stmt->execute([$_SESSION['user_id']]);
             $row = $stmt->fetch();
@@ -90,6 +126,7 @@ $themeClass = 'theme-' . $userTheme;
     
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 </head>
+
 <body class="<?php echo $body_class . ' ' . $themeClass; ?>">
 
 <nav class="navbar navbar-expand-lg navbar-dark">

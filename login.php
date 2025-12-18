@@ -1,14 +1,24 @@
 <?php
 require_once "include/header.php";
 
-// 1. Omdirigera om man redan är inloggad
+// ---------------------------------------------------------
+// 1. SESSIONSHANTERING & OMDIRIGERING (CONTROLLER)
+// ---------------------------------------------------------
+// Här kollar vi om användaren redan är inloggad.
+// Det är dålig UX att visa inloggningsformuläret för någon som redan är inne.
 if (isset($_SESSION['user_id'])) {
+    
+    // RBAC (Role Based Access Control) Omdirigering:
+    // Om användaren har behörighetsnivå 5 eller högre (Lärare/Admin),
+    // skickar vi dem direkt till Admin-panelen.
     if ($_SESSION['role_level'] >= 5) {
         header("Location: admin_dashboard.php");
-    } else {
+    } 
+    // Annars (Elev), skickar vi dem till elevens Dashboard (Spelplanen).
+    else {
         header("Location: dashboard.php");
     }
-    exit;
+    exit; // Avbryt exekveringen direkt efter en header-redirect.
 }
 
 $errorMsg = "";
@@ -16,26 +26,44 @@ $errorMsg = "";
 // men vi låter den vara kvar ifall man manuellt omdirigerar.
 $successMsg = ""; 
 
+// Visar meddelande om man precis skapat konto och blivit omdirigerad hit.
 if (isset($_GET['signup']) && $_GET['signup'] == 'success') {
     $successMsg = "Ditt konto är nu skapat! Logga in nedan.";
 }
 
-// 2. Hantera formuläret
+// ---------------------------------------------------------
+// 2. HANTERA INLOGGNINGSFORMULÄRET (POST-REQUEST)
+// Detta block körs när användaren trycker på "Logga in".
+// ---------------------------------------------------------
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
     
+    // --- SÄKERHET: CSRF-TOKEN ---
     // Kontrollera om token finns, annars använd tom sträng för att undvika felmeddelande
     $token = isset($_POST['csrf_token']) ? $_POST['csrf_token'] : '';
     
+    // verifyCsrfToken() (från functions.php) kollar att formuläret
+    // verkligen skickades från vår server och inte från en annan sida.
     if (!verifyCsrfToken($token)) {
         die("Ogiltig CSRF-token. Försök ladda om sidan.");
     }
 
+    // --- SÄKERHET: SANITERING ---
+    // cleanInput() tar bort skadlig kod (XSS-skydd).
+    // Vi tillåter inloggning med BÅDE e-post och användarnamn, så vi tvättar inputen som text.
     $email = cleanInput($_POST['email']);
+    
+    // Lösenordet tvättas INTE här eftersom specialtecken är tillåtna.
+    // Det hanteras säkert via password_verify() senare.
     $password = $_POST['password']; 
 
+    // --- LOGIK: AUTENTISERING (MODELL) ---
+    // Vi anropar User-klassens metod loginUser().
+    // Denna metod kollar mot databasen och verifierar lösenordshashen.
     $loginResult = $user_obj->loginUser($email, $password);
 
     if ($loginResult['success']) {
+        // Om inloggningen lyckades:
+        // Skicka användaren till rätt startsida beroende på roll.
         if ($loginResult['role_level'] >= 5) {
             header("Location: admin_dashboard.php");
         } else {
@@ -43,6 +71,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
         }
         exit;
     } else {
+        // Om fel (fel lösenord/användare): Visa felmeddelande.
         $errorMsg = $loginResult['error'];
     }
 }
@@ -68,6 +97,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
                     <?php endif; ?>
 
                     <form action="login.php" method="POST">
+                        
                         <?php echo csrfInput(); ?>
 
                         <div class="mb-3">
@@ -85,9 +115,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login-submit'])) {
                         </div>
                     </form>
                     
-                    <!-- BORTTAGET: Länken "Saknar du konto?" är borta -->
-
-                </div>
+                    </div>
             </div>
         </div>
     </div>
