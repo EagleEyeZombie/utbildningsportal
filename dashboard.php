@@ -266,6 +266,7 @@ function buildUrl($params) {
                                     }
                                 ?>
 
+                                <!-- Flöde D. Steg 1-->
                                 <a href="task_view.php?id=<?= $task['t_id'] ?>" class="btn btn-sm <?= $btnClass ?>">
                                     <?= $btnText ?> <i class="bi <?= $btnIcon ?>"></i>
                                 </a>

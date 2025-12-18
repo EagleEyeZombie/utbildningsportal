@@ -7,8 +7,10 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// // Flöde D. Steg 2.1: Hämta ID från URL
 $taskId = isset($_GET['id']) ? $_GET['id'] : 0;
 $task = $task_obj->getTaskById($taskId);
+// ... (Om ingen uppgift hittas, kasta ut användaren) ...
 
 if (!$task) {
     header("Location: dashboard.php");
@@ -16,9 +18,11 @@ if (!$task) {
 }
 
 // --- SÄKERHET: KOLLA OM LÅST ---
+// Flöde D. Steg 2.2: SÄKERHET - Är uppgiften låst?
 $unlockedLevel = $task_obj->getUnlockedLevel($_SESSION['user_id'], $task['t_type_fk'], $task['t_genre_fk']);
 $isLocked = ($task['tl_level'] > $unlockedLevel);
 
+// Flöde D. Steg 3: Avkoda JSON-data
 $questions = json_decode($task['t_questions'], true);
 $taskTypeName = strtolower($task['type_name']); 
 
@@ -70,9 +74,13 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
 
                     <?php 
                     $qCount = 0;
-                    
+
+                    // Flöde D. Steg 4: Dynamisk Rendering (Välj rätt gränssnitt)
+
+                    // Flöde D. Steg 4.A. Fall A: Textluckor (Drag & Drop)
                     // === TEXTLUCKOR ===
                     if (strpos($taskTypeName, 'textluckor') !== false) {
+                        // ... renderar lucktext-gränssnittet ...
                         $qCount++;
                         $gaps = $questions['gaps'];
                         $distractors = isset($questions['distractors']) ? $questions['distractors'] : [];
@@ -131,8 +139,10 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
                         <?php
                     }
                     
+                    
                     // === PARA IHOP ===
                     elseif (strpos($taskTypeName, 'para ihop') !== false) {
+                        
                         $qCount++;
                         $pairs = $questions; 
                         $shuffledTerms = $pairs;
@@ -178,8 +188,10 @@ if (strpos($taskTypeName, 'sortering') !== false || strpos($taskTypeName, 'para 
                         <?php
                     }
 
+                    // Flöde D. Steg4.B. Fall B: Sortering
                     // === SORTERING ===
                     elseif (strpos($taskTypeName, 'sortering') !== false) {
+                        // ... renderar sorterings-listan ...
                         $qCount++;
                         $correctOrder = $questions['s']; 
                         $shuffledOrder = $correctOrder; 
